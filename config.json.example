@@ -1,0 +1,21 @@
+{
+  "comments": "Example config - copy to config.json and add your API keys",
+  "secret_key": "YOUR_HYPERLIQUID_SECRET_KEY",
+  "account_address": "YOUR_HYPERLIQUID_ACCOUNT_ADDRESS",
+  "phemex_api_key": "YOUR_PHEMEX_API_KEY",
+  "phemex_api_secret": "YOUR_PHEMEX_API_SECRET",
+  "coinbase_api_key": "YOUR_COINBASE_API_KEY",
+  "coinbase_api_key_secret": "YOUR_COINBASE_API_KEY_SECRET",
+  "coinbase_api_passphrase": "YOUR_COINBASE_PASSPHRASE",
+  "binance_api_key": "YOUR_BINANCE_API_KEY",
+  "binance_api_secret": "YOUR_BINANCE_API_SECRET",
+  "kucoin_api_key": "YOUR_KUCOIN_API_KEY",
+  "kucoin_api_secret": "YOUR_KUCOIN_API_SECRET",
+  "kucoin_api_passphrase": "YOUR_KUCOIN_PASSPHRASE",
+  "use_hyperliquid": false,
+  "use_phemex": true,
+  "use_coinbase": false,
+  "use_binance": false,
+  "use_kucoin": false,
+  "numexpr_max_threads": null
+}

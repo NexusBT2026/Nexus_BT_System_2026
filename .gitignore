@@ -1,0 +1,31 @@
+﻿# Data and cache files
+*.csv
+*.pkl
+*.sqlite
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Logs
+*.log
+logs/
+
+# Results and outputs
+results/
+data/
+outputs_*/
+tmp/
+
+# API keys and secrets
+config.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

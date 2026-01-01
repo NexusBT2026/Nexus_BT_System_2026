@@ -1,0 +1,65 @@
+# Core dependencies
+hyperliquid-python-sdk
+hyperliquid
+ccxt
+pandas
+pandas_ta
+setuptools==80.9.0
+aiofiles
+requests
+psutil
+matplotlib
+python-dotenv
+
+# Data science / ML / RL
+numpy==2.2.6  # Compatible with CuPy, numba, and pandas-ta
+scipy
+torch
+gym
+gymnasium
+stable_baselines3
+optuna
+hyperopt
+seaborn
+plotly
+tqdm
+cupy-cuda12x  # GPU-accelerated NumPy replacement (CUDA 12.x compatible)
+
+# GPU-accelerated technical analysis for Windows
+ta-lib  # Technical analysis library (CPU, but fast)
+numba  # JIT compilation for CPU/GPU acceleration
+
+# RAPIDS - GPU-accelerated data science ecosystem (Linux only)
+# cudf-cu12  # GPU-accelerated pandas replacement - NOT AVAILABLE ON WINDOWS
+# cuml-cu12  # GPU-accelerated machine learning - NOT AVAILABLE ON WINDOWS
+# cugraph-cu12  # GPU-accelerated graph analytics - NOT AVAILABLE ON WINDOWS
+
+# Alternative GPU libraries for Windows
+# Consider using WSL2 for full RAPIDS support on Windows
+
+# Web, API, and networking
+fastapi
+flask
+uvicorn
+websockets
+aiohttp
+prometheus_client
+beautifulsoup4
+pytz
+urllib3
+streamlit
+
+# Proxy/VPN support for ProtonVPN
+PySocks
+python-socks[asyncio]
+protonvpn-cli
+
+# Utilities and tools
+pytest
+schedule
+pydantic
+rope
+
+# Optional / dev / test
+#yarg==0.1.9
+#ipython==8.12.3
