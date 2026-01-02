@@ -359,7 +359,6 @@ pip install -r requirements.txt
 - Check the `src/utils/check_status.py` for current optimization status
 - Use `src/utils/analyze_results.py` for detailed result analysis
 - Run `python run_bt.py --help` for all available options
-- "Need custom development? [Hire me on Fiverr]"
 
 ## 💼 Custom Development Services
 
