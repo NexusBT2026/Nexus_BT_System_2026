@@ -17,6 +17,9 @@ data/
 outputs_*/
 tmp/
 
+# Client deliveries (Fiverr orders)
+client_deliveries/
+
 # API keys and secrets
 config.json
 

@@ -1,0 +1,6 @@
+ccxt>=4.0.0
+pandas>=2.0.0
+numpy>=1.24.0
+ta>=0.11.0
+python-dateutil>=2.8.0
+plotly>=5.18.0

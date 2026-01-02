@@ -1,0 +1,68 @@
+{
+  "_comment": "CLIENT DELIVERY CONFIG TEMPLATE - Customize for each order",
+  
+  "client_info": {
+    "name": "[CLIENT_NAME]",
+    "order_id": "[FIVERR_ORDER_ID]",
+    "delivery_date": "[YYYY-MM-DD]"
+  },
+  
+  "exchange": {
+    "name": "[binance/coinbase/kucoin/hyperliquid/phemex]",
+    "api_key": "YOUR_API_KEY_HERE",
+    "api_secret": "YOUR_API_SECRET_HERE",
+    "testnet": false
+  },
+  
+  "trading": {
+    "symbols": ["[SYMBOL1]", "[SYMBOL2]"],
+    "timeframe": "[5m/15m/1h/4h/1d]",
+    "initial_capital": 10000
+  },
+  
+  "strategy": {
+    "name": "[STRATEGY_NAME]",
+    "type": "[momentum/mean_reversion/breakout/scalping]",
+    
+    "_comment_params": "CUSTOMIZE THESE BASED ON CLIENT REQUIREMENTS",
+    "parameters": {
+      "param1": [VALUE],
+      "param2": [VALUE],
+      "param3": [VALUE]
+    },
+    
+    "risk_management": {
+      "stop_loss_pct": [DEFAULT: 2.0],
+      "take_profit_pct": [DEFAULT: 4.0],
+      "position_size_pct": [DEFAULT: 10.0],
+      "max_positions": 1,
+      "use_trailing_stop": false,
+      "trailing_stop_pct": 1.5
+    }
+  },
+  
+  "backtest": {
+    "start_date": "[YYYY-MM-DD or null for all available]",
+    "end_date": "[YYYY-MM-DD or null for today]",
+    "commission": 0.001,
+    "slippage": 0.0005
+  },
+  
+  "optimization": {
+    "_comment": "Only if client ordered optimization",
+    "enabled": false,
+    "method": "hyperopt",
+    "trials": 100,
+    "param_ranges": {
+      "param1": [10, 50, 5],
+      "param2": [20, 100, 10]
+    }
+  },
+  
+  "output": {
+    "save_results": true,
+    "results_dir": "./results",
+    "generate_charts": true,
+    "export_trades": true
+  }
+}
