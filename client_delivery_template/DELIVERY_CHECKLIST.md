@@ -95,7 +95,22 @@ python C:\Users\Warshawski\nexus_bt_system\src\optimizers\optimizer.py --strateg
 - [ ] Copy backtest metrics to README.md
 - [ ] Save performance summary
 - [ ] Export trade history CSV
-- [ ] Generate charts (if visualization ready)
+- [ ] **Generate professional charts (ALWAYS DO THIS!)**
+
+**Generate Professional Interactive Charts:**
+```python
+# Copy generate_professional_charts.py to your folder
+cp ../../client_delivery_template/generate_professional_charts.py ./
+
+# Create chart generator script
+# See: client_deliveries/practice_sarah_20260102/create_charts.py for example
+
+# Run to generate PERFORMANCE_REPORT.html
+python create_charts.py
+```
+- [ ] Verify PERFORMANCE_REPORT.html opens in browser
+- [ ] Check all 8 charts display correctly
+- [ ] Confirm metrics match README.md
 
 ---
 
@@ -119,14 +134,15 @@ python-dateutil>=2.8.0
 ### 11. Final File Structure
 ```
 client_delivery/
-├── strategy.py           ✓
-├── config.json.example   ✓
-├── requirements.txt      ✓
-├── README.md            ✓
+├── strategy.py                    ✓
+├── config.json.example            ✓
+├── requirements.txt               ✓
+├── README.md                      ✓
+├── PERFORMANCE_REPORT.html        ✓ (NEW! Always include)
 ├── results/
 │   ├── backtest_report.json
 │   └── trades.csv
-└── (charts if available)
+└── create_charts.py               ✓ (Client can regenerate charts)
 ```
 
 ### 12. Zip for Delivery
@@ -158,14 +174,16 @@ Your custom [STRATEGY_TYPE] strategy is complete and ready!
 📦 WHAT'S INCLUDED:
 - Custom strategy implementation
 - Full source code with documentation
+- **Professional interactive performance charts (HTML)**
 - Backtest results and trade history
 - Configuration template
 - Setup instructions in README.md
 
 🚀 NEXT STEPS:
 1. Extract the ZIP file
-2. Follow README.md for setup
-3. Test on paper trading before going live
+2. Open PERFORMANCE_REPORT.html in your browser to see results
+3. Follow README.md for setup details
+4. Test on paper trading before going live
 
 ⚠️ REMINDER:
 Past backtest performance doesn't guarantee future results. Start with small positions and monitor closely.
@@ -232,10 +250,12 @@ Warshawski
 
 - [ ] Strategy code runs without errors
 - [ ] Backtest produces reasonable results (not 1000% returns!)
+- [ ] **PERFORMANCE_REPORT.html opens and displays all 8 charts**
+- [ ] **Charts match metrics in README.md**
 - [ ] README has all client-specific info filled in
 - [ ] No placeholder [BRACKETS] left in files
 - [ ] No API keys in config files
-- [ ] Requirements.txt lists all dependencies
+- [ ] Requirements.txt lists all dependencies (including plotly!)
 - [ ] Tested on clean Python environment
 - [ ] Trade logic matches client requirements
 - [ ] Risk management settings are sensible

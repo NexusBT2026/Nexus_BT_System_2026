@@ -34,8 +34,10 @@ def load_ohlcv(symbol, exchange, timeframe='1d', source='csv', sqlite_path=None)
     import pandas as pd
     import os
     
+    # Define project_root at the start
+    project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+    
     if sqlite_path is None:
-        project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
         sqlite_path = os.path.join(project_root, 'data', 'pipeline_results.sqlite')
     required_cols = ['open', 'high', 'low', 'close', 'volume', 'timestamp']
     if source == 'csv':
@@ -93,6 +95,7 @@ def main():
     parser.add_argument('--strategy', required=True, help='Strategy name (e.g., RSIDivergenceStrategy or rsi_divergence)')
     parser.add_argument('--symbol', required=True, help='Symbol (e.g., BTCUSDT)')
     parser.add_argument('--exchange', required=True, help='Exchange (phemex or hyperliquid)')
+    parser.add_argument('--timeframe', default='5m', help='Timeframe (e.g., 5m, 15m, 1h, 1d)')
     parser.add_argument('--data-source', default='csv', choices=['csv', 'sqlite'], help='OHLCV data source (csv or sqlite)')
     parser.add_argument('--sqlite-path', default=os.path.join(project_root, 'data', 'pipeline_results.sqlite'), help='SQLite DB path if using sqlite')
     args = parser.parse_args()
@@ -116,7 +119,7 @@ def main():
         sys.exit(1)
 
     print(f"[OPTIMIZER] About to load OHLCV data for symbol: {args.symbol}, data source: {args.data_source}, path: {args.sqlite_path if args.data_source == 'sqlite' else 'CSV'}", flush=True)
-    ohlcv = load_ohlcv(args.symbol, args.exchange, source=args.data_source, sqlite_path=args.sqlite_path)
+    ohlcv = load_ohlcv(args.symbol, args.exchange, timeframe=args.timeframe, source=args.data_source, sqlite_path=args.sqlite_path)
     print(f"[OPTIMIZER] OHLCV data loaded. Shape: {ohlcv.shape if hasattr(ohlcv, 'shape') else 'N/A'} Columns: {list(ohlcv.columns) if hasattr(ohlcv, 'columns') else 'N/A'}", flush=True)
     if ohlcv.empty:
         logging.error(f"No valid OHLCV data for {args.symbol} from {args.data_source}. Skipping.")

@@ -26,6 +26,7 @@ tqdm
 cupy-cuda12x  # GPU-accelerated NumPy replacement (CUDA 12.x compatible)
 
 # GPU-accelerated technical analysis for Windows
+ta>=0.11.0  # Technical analysis library (simple API, client deliveries)
 ta-lib  # Technical analysis library (CPU, but fast)
 numba  # JIT compilation for CPU/GPU acceleration
 
