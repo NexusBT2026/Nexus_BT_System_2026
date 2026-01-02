@@ -361,6 +361,20 @@ pip install -r requirements.txt
 - Run `python run_bt.py --help` for all available options
 - "Need custom development? [Hire me on Fiverr]"
 
+## 💼 Custom Development Services
+
+Need a custom trading strategy or backtesting system tailored to your specific requirements?
+
+**[Hire me on Fiverr](https://www.fiverr.com/viwarshawski/develop-custom-python-cryptocurrency-trading-strategies-and-backtesting)** for professional development services:
+
+- Custom strategy development
+- Multi-exchange integration
+- Parameter optimization
+- Live trading setup
+- Consultation and support
+
+3+ years of experience building production-grade trading systems. All communication via written messages for clear, precise requirements.
+
 ## 🤝 Contributing
 
 This is a standalone BT system extracted from the larger Nexus trading platform. Contributions welcome:
