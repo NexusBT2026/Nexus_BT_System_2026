@@ -17,11 +17,33 @@ data/
 outputs_*/
 tmp/
 
+# Archived historical data (proprietary dataset)
+archived_data/
+*.db
+
 # Client deliveries (Fiverr orders)
 client_deliveries/
 
+# Test files building the project enhancements
+testing_new_features/
+
 # Fiverr personal prep files (screenshots, demos, marketing)
 fiverr_personal/
+
+# Market discovery data (symbol lists from exchanges)
+markets_info/
+
+# Personal workflow/checklist files
+READY_FOR_BUSINESS.md
+PRE_RELEASE_CHECKLIST.md
+
+# Proprietary archiving setup (competitive advantage)
+run_daily_archive.bat
+archived_data/TASK_SCHEDULER_SETUP.txt
+src/archiver/
+
+# Test and optimization files
+test_optuna_optimizer.py
 
 # API keys and secrets
 config.json
