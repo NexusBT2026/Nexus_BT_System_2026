@@ -20,6 +20,9 @@ tmp/
 # Client deliveries (Fiverr orders)
 client_deliveries/
 
+# Fiverr personal prep files (screenshots, demos, marketing)
+fiverr_personal/
+
 # API keys and secrets
 config.json
 
