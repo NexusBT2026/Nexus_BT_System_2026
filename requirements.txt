@@ -22,6 +22,9 @@ optuna
 hyperopt
 seaborn
 plotly
+dash  # Interactive web dashboards
+scikit-learn  # Machine learning toolkit
+ipython  # Interactive Python shell (required by QuantStats)
 tqdm
 cupy-cuda12x  # GPU-accelerated NumPy replacement (CUDA 12.x compatible)
 

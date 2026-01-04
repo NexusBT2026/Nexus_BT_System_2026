@@ -48,6 +48,17 @@ test_optuna_optimizer.py
 # API keys and secrets
 config.json
 
+# Premium analytics dependencies (competitive advantage)
+requirements-premium.txt
+
+# Premium reporting module (competitive advantage - 372 lines of production code)
+src/reporting/
+
+# Professional tear sheet outputs (client deliverables)
+reports/
+*_tearsheet*.html
+*.html
+
 # IDE
 .vscode/
 .idea/

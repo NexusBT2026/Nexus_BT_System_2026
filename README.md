@@ -33,6 +33,7 @@ A comprehensive, modular backtesting framework inspired by Freqtrade, featuring 
 
 ### Advanced Analysis
 - **Interactive dashboards** with Plotly charts
+- **Professional tear sheets** with institutional-grade metrics
 - **3D parameter surface plots** for optimization visualization
 - **Correlation analysis** and portfolio optimization
 - **Kelly Criterion** position sizing
@@ -412,10 +413,29 @@ Same as the original Nexus project.
 ## 📊 Client Delivery Features
 
 ### Professional Reporting
+- **Institutional-grade tear sheets** with 40+ metrics and visualizations
+- **Benchmark comparison** (strategy vs buy-and-hold performance)
 - **Interactive HTML dashboards** with 6 comprehensive charts
 - **Separate candlestick charts** showing price action with trade entry/exit markers
+- **Advanced risk metrics** including Sharpe, Sortino, Calmar, VaR, CVaR
 - **Clean, professional design** optimized for client presentations
 - **Real-time browser preview** for immediate validation
+
+### Quick Tear Sheet Generation
+```python
+# Generate professional tear sheet (basic example)
+from src.reporting_demo import generate_basic_tearsheet
+import pandas as pd
+
+# Your strategy returns
+returns = pd.Series([...], index=dates)
+
+# Generate institutional report
+generate_basic_tearsheet(returns, "strategy_report.html")
+# Opens HTML with 40+ charts: equity curve, drawdown, monthly heatmap, risk metrics, etc.
+```
+
+**Note:** Full production implementation with automatic benchmark loading, batch processing, and advanced features available to clients.
 
 ### Automated Chart Generation
 ```python
@@ -428,6 +448,19 @@ create_professional_charts(results, symbol, strategy_name, "dashboard.html")
 # Candlestick with trade signals
 create_candlestick_chart(results, symbol, strategy_name, ohlcv_data, "candlestick.html")
 ```
+
+### Tear Sheet Components
+**Professional tear sheets include:**
+- Cumulative returns vs benchmark
+- Drawdown analysis with underwater plot
+- Monthly/yearly returns heatmap
+- Rolling Sharpe and volatility
+- Return distribution analysis
+- Risk metrics table (Sharpe, Sortino, Calmar, VaR, CVaR)
+- Win/loss statistics
+- Best/worst periods analysis
+- Trade duration analysis
+- Correlation matrix
 
 ### Chart Components
 **Dashboard includes:**
