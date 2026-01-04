@@ -48,5 +48,4 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/SemVer
 - Limited exchange support (primarily Phemex)
 - Basic optimization (random search only)
 - No interactive visualization
-- Manual strategy registration required</content>
-<parameter name="filePath">c:\Users\Warshawski\nexus_bt_system\CHANGELOG.md
+- Manual strategy registration required

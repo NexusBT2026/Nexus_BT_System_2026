@@ -11,11 +11,19 @@ A comprehensive, modular backtesting framework inspired by Freqtrade, featuring 
 - **GPU-accelerated computations** where available
 
 ### Multi-Exchange Support
-- **Binance** - Spot trading
-- **Coinbase** - Spot trading
+- **Binance** - Spot trading (USDC pairs)
+- **Coinbase** - Spot trading (USDC pairs)
 - **Hyperliquid** - Perpetual futures
-- **KuCoin** - Spot trading
+- **KuCoin** - Perpetual swap futures (USDT pairs)
 - **Phemex** - Perpetual futures with unique contract formats
+
+**Pending Integration (Phase 3):**
+- **Bybit** - Perpetual swaps (+38 unique symbols)
+- **OKX** - Perpetual swaps (+3 unique symbols)
+- **Bitget** - Perpetual swaps (+15 unique symbols)
+- **Gate.io** - Perpetual swaps (+46 unique symbols)
+- **MEXC** - Perpetual swaps (+118 unique symbols)
+- **Total**: +169 NEW unique symbols beyond current coverage
 
 ### Strategy Optimization
 - **12+ built-in strategies** including RSI Divergence, MACD+EMA+ATR, EMA Channel Scalping, Adaptive RSI, Mean Reversion BB+RSI, Supply/Demand Spot, RL Trading Agent, SuperTrend, Markov Chain, EMA Ribbon Pullback, Breakout, and Statistical Arbitrage
@@ -391,7 +399,12 @@ Same as the original Nexus project.
 
 - [ ] Web-based dashboard GUI
 - [ ] Live trading integration
-- [ ] Additional exchanges (Bybit, OKX, etc.)
+- [ ] **Additional exchanges (Phase 3 - In Progress)**
+  - **Current**: 5 exchanges (Phemex, Hyperliquid, Coinbase, Binance, KuCoin)
+  - **Pending Integration**: 5 new exchanges (Bybit, OKX, Bitget, Gate.io, MEXC)
+  - **Impact**: +169 NEW unique perpetual swap symbols
+  - **Total After Integration**: 1600+ existing + 169 new = 1769+ total symbols
+  - **Status**: Symbol discovery complete, OHLCV modules ready, pipeline integration pending
 - [ ] Machine learning-based strategy generation
 - [ ] Portfolio optimization features
 - [ ] Advanced risk management modules

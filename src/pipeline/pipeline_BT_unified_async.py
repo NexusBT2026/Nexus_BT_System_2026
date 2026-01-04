@@ -190,20 +190,69 @@ def discover_symbols() -> dict[str, object]:
                                            get_all_phemex_contract_symbols, get_phemex_base_symbols, 
                                            get_hyperliquid_symbols,
                                            get_coinbase_spot_symbols, get_coinbase_base_symbols,
-                                           get_binance_spot_symbols, get_binance_base_symbols )
+                                           get_binance_spot_symbols, get_binance_base_symbols,
+                                           get_bitget_base_symbols, get_bitget_symbols,
+                                           get_gateio_base_symbols, get_gateio_symbols,
+                                           get_mexc_base_symbols, get_mexc_symbols,
+                                           get_okx_base_symbols, get_okx_symbols,
+                                           get_bybit_base_symbols, get_bybit_symbols)
     from src.data.symbol_intersection import (get_common_base_symbols, async_get_common_base_symbols,
                                               get_hyperliquid_unmatched_symbols, async_get_hyperliquid_unmatched_symbols,
                                               async_get_unmatched_coinbase_symbols, get_unmatched_coinbase_symbols,
                                               get_unmatched_binance_symbols, async_get_unmatched_binance_symbols,
                                               get_unmatched_phemex_symbols, async_get_unmatched_phemex_symbols,
                                               get_unmatched_kucoin_symbols, async_get_unmatched_kucoin_symbols,
-                                              get_phemex_base, get_binance_base, get_coinbase_base, get_kucoin_base)
+                                              get_phemex_base, get_binance_base, get_coinbase_base, get_kucoin_base,
+                                              get_unmatched_bitget_symbols, get_unmatched_bybit_symbols,
+                                              get_unmatched_gateio_symbols, get_unmatched_mexc_symbols, get_unmatched_okx_symbols)
+    
+    # Load config to check exchange flags
+    config_path = os.path.join(project_root, 'config.json')
+    with open(config_path, 'r') as f:
+        config = json.load(f)
+    
+    enabled_exchanges = []
+    if config.get('use_phemex', True):
+        enabled_exchanges.append('phemex')
+    if config.get('use_hyperliquid', True):
+        enabled_exchanges.append('hyperliquid')
+    if config.get('use_coinbase', True):
+        enabled_exchanges.append('coinbase')
+    if config.get('use_binance', True):
+        enabled_exchanges.append('binance')
+    if config.get('use_kucoin', True):
+        enabled_exchanges.append('kucoin')
+    if config.get('use_bybit', False):
+        enabled_exchanges.append('bybit')
+    if config.get('use_okx', False):
+        enabled_exchanges.append('okx')
+    if config.get('use_bitget', False):
+        enabled_exchanges.append('bitget')
+    if config.get('use_gateio', False):
+        enabled_exchanges.append('gateio')
+    if config.get('use_mexc', False):
+        enabled_exchanges.append('mexc')
+    
+    logger.info(f"Enabled exchanges for symbol discovery: {enabled_exchanges}")
+
     # Load both caches
     base_symbols_cache = load_cache_base_symbols()
     per_exchange_cache = load_cache_per_exchange_format()
 
     # Initialize all outputs as None
-    phemex_symbols = phemex_symbols_base = hyperliquid_symbols = coinbase_unmatched = common_symbols = unmatched_hyperliquid = binance_unmatched = kucoin_unmatched = None
+    phemex_symbols = None
+    phemex_symbols_base = None
+    hyperliquid_symbols = None
+    coinbase_unmatched = None
+    common_symbols = None
+    unmatched_hyperliquid = None
+    binance_unmatched = None
+    kucoin_unmatched = None
+    bitget_unmatched = None
+    bybit_unmatched = None
+    gateio_unmatched = None
+    mexc_unmatched = None
+    okx_unmatched = None
 
     # Use base symbols cache if available
     if base_symbols_cache and "symbols" in base_symbols_cache:
@@ -222,16 +271,16 @@ def discover_symbols() -> dict[str, object]:
         logger.debug(f"[CACHE] Loaded unmatched Binance symbols: {binance_unmatched}")
         kucoin_unmatched = get_unmatched_kucoin_symbols()
         logger.debug(f"[CACHE] Loaded unmatched Kucoin symbols: {kucoin_unmatched}")
-
-    # Use per-exchange cache if available (overrides above if both present)
-    if per_exchange_cache and "symbols" in per_exchange_cache:
-        symbols = per_exchange_cache["symbols"]
-        phemex_symbols = symbols.get("phemex_contracts", phemex_symbols)
-        logger.debug(f"[CACHE] Loaded Phemex contract symbols: {phemex_symbols}")
-        hyperliquid_symbols = symbols.get("hyperliquid", hyperliquid_symbols)
-        logger.debug(f"[CACHE] Loaded Hyperliquid symbols: {hyperliquid_symbols}")
-        coinbase_unmatched = symbols.get("coinbase", coinbase_unmatched)
-        logger.debug(f"[CACHE] Loaded Coinbase symbols: {coinbase_unmatched}")
+        bitget_unmatched = get_unmatched_bitget_symbols()
+        logger.debug(f"[CACHE] Loaded unmatched Bitget symbols: {bitget_unmatched}")
+        bybit_unmatched = get_unmatched_bybit_symbols()
+        logger.debug(f"[CACHE] Loaded unmatched Bybit symbols: {bybit_unmatched}")
+        gateio_unmatched = get_unmatched_gateio_symbols()
+        logger.debug(f"[CACHE] Loaded unmatched Gateio symbols: {gateio_unmatched}")
+        mexc_unmatched = get_unmatched_mexc_symbols()
+        logger.debug(f"[CACHE] Loaded unmatched Mexc symbols: {mexc_unmatched}")
+        okx_unmatched = get_unmatched_okx_symbols()
+        logger.debug(f"[CACHE] Loaded unmatched Okx symbols: {okx_unmatched}")
 
     # If any are still None, fetch live (using helper functions that return lists)
     if phemex_symbols is None:
@@ -260,6 +309,18 @@ def discover_symbols() -> dict[str, object]:
     if kucoin_unmatched is None:
         kucoin_unmatched = get_unmatched_kucoin_symbols()
         logger.debug(f"[LIVE] Fetched unmatched Kucoin symbols: {kucoin_unmatched}")
+    if bybit_unmatched is None:
+        bybit_unmatched = get_unmatched_bybit_symbols()
+        logger.debug(f"[LIVE] Fetched unmatched Bybit symbols: {bybit_unmatched}")
+    if gateio_unmatched is None:
+        gateio_unmatched = get_unmatched_gateio_symbols()
+        logger.debug(f"[LIVE] Fetched unmatched Gateio symbols: {gateio_unmatched}")
+    if mexc_unmatched is None:
+        mexc_unmatched = get_unmatched_mexc_symbols()
+        logger.debug(f"[LIVE] Fetched unmatched Mexc symbols: {mexc_unmatched}")
+    if okx_unmatched is None:
+        okx_unmatched = get_unmatched_okx_symbols()
+        logger.debug(f"[LIVE] Fetched unmatched Okx symbols: {okx_unmatched}")
 
     return {
         'phemex': phemex_symbols,
@@ -269,7 +330,12 @@ def discover_symbols() -> dict[str, object]:
         'unmatched_hyperliquid': unmatched_hyperliquid,
         'coinbase_unmatched': coinbase_unmatched,
         'unmatched_binance': binance_unmatched,
-        'unmatched_kucoin': kucoin_unmatched
+        'unmatched_kucoin': kucoin_unmatched,
+        'unmatched_bitget': bitget_unmatched,
+        'unmatched_bybit': bybit_unmatched,
+        'unmatched_gateio': gateio_unmatched,
+        'unmatched_mexc': mexc_unmatched,
+        'unmatched_okx': okx_unmatched
     }
 
 async def discover_symbols_async():
@@ -279,14 +345,24 @@ async def discover_symbols_async():
                                            get_all_phemex_contract_symbols, get_phemex_base_symbols, 
                                            get_hyperliquid_symbols,
                                            get_coinbase_spot_symbols, get_coinbase_base_symbols,
-                                           get_binance_spot_symbols, get_binance_base_symbols )
+                                           get_binance_spot_symbols, get_binance_base_symbols,
+                                           get_bitget_base_symbols, get_bitget_symbols,
+                                           get_gateio_base_symbols, get_gateio_symbols,
+                                           get_mexc_base_symbols, get_mexc_symbols,
+                                           get_okx_base_symbols, get_okx_symbols,
+                                           get_bybit_base_symbols, get_bybit_symbols)
     from src.data.symbol_intersection import (get_common_base_symbols, async_get_common_base_symbols,
                                               get_hyperliquid_unmatched_symbols, async_get_hyperliquid_unmatched_symbols,
                                               async_get_unmatched_coinbase_symbols, get_unmatched_coinbase_symbols,
                                               get_unmatched_binance_symbols, async_get_unmatched_binance_symbols,
                                               get_unmatched_phemex_symbols, async_get_unmatched_phemex_symbols,
                                               get_unmatched_kucoin_symbols, async_get_unmatched_kucoin_symbols,
-                                              get_phemex_base, get_binance_base, get_coinbase_base, get_kucoin_base)
+                                              get_phemex_base, get_binance_base, get_coinbase_base, get_kucoin_base,
+                                              get_unmatched_bitget_symbols, async_get_unmatched_bitget_symbols,
+                                              get_unmatched_bybit_symbols, async_get_unmatched_bybit_symbols,
+                                              get_unmatched_gateio_symbols, async_get_unmatched_gateio_symbols,
+                                              get_unmatched_mexc_symbols, async_get_unmatched_mexc_symbols,
+                                              get_unmatched_okx_symbols, async_get_unmatched_okx_symbols)
     
     # Load config to check exchange flags
     config_path = os.path.join(project_root, 'config.json')
@@ -304,6 +380,16 @@ async def discover_symbols_async():
         enabled_exchanges.append('binance')
     if config.get('use_kucoin', True):
         enabled_exchanges.append('kucoin')
+    if config.get('use_bybit', False):
+        enabled_exchanges.append('bybit')
+    if config.get('use_okx', False):
+        enabled_exchanges.append('okx')
+    if config.get('use_bitget', False):
+        enabled_exchanges.append('bitget')
+    if config.get('use_gateio', False):
+        enabled_exchanges.append('gateio')
+    if config.get('use_mexc', False):
+        enabled_exchanges.append('mexc')
     
     logger.info(f"Enabled exchanges for symbol discovery: {enabled_exchanges}")
 
@@ -312,7 +398,19 @@ async def discover_symbols_async():
     per_exchange_cache = load_cache_per_exchange_format()
 
     # Initialize all outputs as None
-    phemex_symbols = phemex_symbols_base = hyperliquid_symbols = coinbase_unmatched = binance_unmatched = kucoin_unmatched = common_symbols = unmatched_hyperliquid = None
+    phemex_symbols = None
+    phemex_symbols_base = None
+    hyperliquid_symbols = None
+    coinbase_unmatched = None
+    binance_unmatched = None
+    kucoin_unmatched = None
+    common_symbols = None
+    unmatched_hyperliquid = None
+    bitget_unmatched = None
+    bybit_unmatched = None
+    gateio_unmatched = None
+    mexc_unmatched = None
+    okx_unmatched = None
 
     # Use base symbols cache if available
     if base_symbols_cache and "symbols" in base_symbols_cache:
@@ -335,20 +433,24 @@ async def discover_symbols_async():
         if 'binance' in enabled_exchanges:
             binance_unmatched = get_unmatched_binance_symbols()
             logger.debug(f"[CACHE] Loaded unmatched Binance symbols: {binance_unmatched}")
-
-
-    # Use per-exchange cache if available (overrides above if both present)
-    if per_exchange_cache and "symbols" in per_exchange_cache:
-        symbols = per_exchange_cache["symbols"]
-        if 'phemex' in enabled_exchanges:
-            phemex_symbols = symbols.get("phemex_contracts", phemex_symbols)
-            logger.debug(f"[CACHE] Loaded Phemex contract symbols: {phemex_symbols}")
-        if 'hyperliquid' in enabled_exchanges:
-            hyperliquid_symbols = symbols.get("hyperliquid", hyperliquid_symbols)
-            logger.debug(f"[CACHE] Loaded Hyperliquid symbols: {hyperliquid_symbols}")
-        if 'coinbase' in enabled_exchanges:
-            coinbase_unmatched = symbols.get("coinbase", coinbase_unmatched)
-            logger.debug(f"[CACHE] Loaded Coinbase symbols: {coinbase_unmatched}")
+        if 'kucoin' in enabled_exchanges:
+            kucoin_unmatched = get_unmatched_kucoin_symbols()
+            logger.debug(f"[CACHE] Loaded unmatched Kucoin symbols: {kucoin_unmatched}")
+        if 'bitget' in enabled_exchanges:
+            bitget_unmatched = get_unmatched_bitget_symbols()
+            logger.debug(f"[CACHE] Loaded unmatched Bitget symbols: {bitget_unmatched}")
+        if 'bybit' in enabled_exchanges:
+            bybit_unmatched = get_unmatched_bybit_symbols()
+            logger.debug(f"[CACHE] Loaded unmatched Bybit symbols: {bybit_unmatched}")
+        if 'gateio' in enabled_exchanges:
+            gateio_unmatched = get_unmatched_gateio_symbols()
+            logger.debug(f"[CACHE] Loaded unmatched Gateio symbols: {gateio_unmatched}")
+        if 'mexc' in enabled_exchanges:
+            mexc_unmatched = get_unmatched_mexc_symbols()
+            logger.debug(f"[CACHE] Loaded unmatched Mexc symbols: {mexc_unmatched}")
+        if 'okx' in enabled_exchanges:
+            okx_unmatched = get_unmatched_okx_symbols()
+            logger.debug(f"[CACHE] Loaded unmatched Okx symbols: {okx_unmatched}")
 
     # If any are still None, fetch live (using helper functions that return lists)
     if phemex_symbols is None and 'phemex' in enabled_exchanges:
@@ -391,6 +493,31 @@ async def discover_symbols_async():
         logger.debug(f"[LIVE] Fetched unmatched Kucoin symbols: {kucoin_unmatched}")
     elif kucoin_unmatched is None:
         kucoin_unmatched = []
+    if bitget_unmatched is None and 'bitget' in enabled_exchanges:
+        bitget_unmatched = await async_get_unmatched_bitget_symbols()
+        logger.debug(f"[LIVE] Fetched unmatched Bitget symbols: {bitget_unmatched}")
+    elif bitget_unmatched is None:
+        bitget_unmatched = []
+    if bybit_unmatched is None and 'bybit' in enabled_exchanges:
+        bybit_unmatched = await async_get_unmatched_bybit_symbols()
+        logger.debug(f"[LIVE] Fetched unmatched Bybit symbols: {bybit_unmatched}")
+    elif bybit_unmatched is None:
+        bybit_unmatched = []
+    if gateio_unmatched is None and 'gateio' in enabled_exchanges:
+        gateio_unmatched = await async_get_unmatched_gateio_symbols()
+        logger.debug(f"[LIVE] Fetched unmatched Gateio symbols: {gateio_unmatched}")
+    elif gateio_unmatched is None:
+        gateio_unmatched = []
+    if mexc_unmatched is None and 'mexc' in enabled_exchanges:
+        mexc_unmatched = await async_get_unmatched_mexc_symbols()
+        logger.debug(f"[LIVE] Fetched unmatched Mexc symbols: {mexc_unmatched}")
+    elif mexc_unmatched is None:
+        mexc_unmatched = []
+    if okx_unmatched is None and 'okx' in enabled_exchanges:
+        okx_unmatched = await async_get_unmatched_okx_symbols()
+        logger.debug(f"[LIVE] Fetched unmatched Okx symbols: {okx_unmatched}")
+    elif okx_unmatched is None:
+        okx_unmatched = []
 
     return {
         'phemex': phemex_symbols,
@@ -400,7 +527,12 @@ async def discover_symbols_async():
         'unmatched_hyperliquid': unmatched_hyperliquid,
         'coinbase_unmatched': coinbase_unmatched,
         'unmatched_binance': binance_unmatched,
-        'unmatched_kucoin': kucoin_unmatched
+        'unmatched_kucoin': kucoin_unmatched,
+        'unmatched_bitget': bitget_unmatched,
+        'unmatched_bybit': bybit_unmatched,
+        'unmatched_gateio': gateio_unmatched,
+        'unmatched_mexc': mexc_unmatched,
+        'unmatched_okx': okx_unmatched
     }
 
 def is_data_fresh(file_path: str, timeframe: str) -> tuple[bool, datetime | None]:
@@ -439,16 +571,21 @@ def is_data_fresh(file_path: str, timeframe: str) -> tuple[bool, datetime | None
 
         # Age threshold based on timeframe
         age_thresholds = {
-            '1m': 2,    # 2 minutes for 1m data
-            '5m': 10,   # 10 minutes for 5m data
-            '15m': 30,  # 30 minutes for 15m data
-            '30m': 60,  # 1 hour for 30m data
-            '1h': 120,  # 2 hours for 1h data
-            '2h': 240,  # 4 hours for 2h data
-            '4h': 480,  # 8 hours for 4h data
-            '6h': 720,  # 12 hours for 6h data
+            '1m': 2,     # 2 minutes for 1m data
+            '3m': 4,     # 4 minutes for 3m data
+            '5m': 10,    # 10 minutes for 5m data
+            '15m': 30,   # 30 minutes for 15m data
+            '30m': 60,   # 1 hour for 30m data
+            '1h': 120,   # 2 hours for 1h data
+            '2h': 240,   # 4 hours for 2h data
+            '4h': 480,   # 8 hours for 4h data
+            '6h': 720,   # 12 hours for 6h data
+            '8h': 960,   # 16 hours for 8h data
             '12h': 1440, # 24 hours for 12h data
-            '1d': 2880   # 48 hours for 1d data
+            '1d': 2880,  # 48 hours for 1d data
+            '3d': 8640,  # 144 hours for 3d data
+            '1w': 10080, # 1 week for 1w data
+            '1M': 43200, # 30 days for 1M data
         }
 
         threshold_minutes = age_thresholds.get(timeframe, 60)
@@ -479,20 +616,31 @@ async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join
         force_refresh: If True, ignore staleness checks and fetch all data
     """
     # Define valid timeframes for each exchange
-    coinbase_timeframes = ['5m', '15m', '30m', '1h', '2h', '6h', '1d']
-    phemex_timeframes = ['5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d']
-    hyperliquid_timeframes = ['5m', '15m', '30m', '1h', '2h', '4h', '12h', '1d']
-    binance_timeframes = ['5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d']
-    kucoin_timeframes = ['5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d']
+    coinbase_timeframes = ['1m', '5m', '15m', '30m', '1h', '2h', '6h', '1d']
+    phemex_timeframes = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d', '1w', '1M']
+    hyperliquid_timeframes = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '8h', '12h', '1d', '3d', '1w', '1M']
+    binance_timeframes = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M']
+    kucoin_timeframes = ['1m', '5m', '15m', '30m', '1h', '2h', '4h', '8h', '12h', '1d', '1w']
+    bybit_timeframes = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d', '3d', '1w', '1M']
+    okx_timeframes = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '12h', '1d', '1w', '1M']
+    bitget_timeframes = ['1m', '3m', '5m', '15m', '30m', '1h', '4h', '6h', '12h', '1d', '3d', '1w', '1M']
+    gateio_timeframes = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w']
+    mexc_timeframes = ['1m', '5m', '15m', '30m', '1h', '4h', '8h', '1d', '1w', '1M']
 
     if timeframes is None:
-        timeframes = list(set(coinbase_timeframes + phemex_timeframes + hyperliquid_timeframes + binance_timeframes + kucoin_timeframes))
+        timeframes = list(set(coinbase_timeframes + phemex_timeframes + hyperliquid_timeframes + binance_timeframes + kucoin_timeframes + bybit_timeframes
+                              + okx_timeframes + bitget_timeframes + gateio_timeframes + mexc_timeframes))
 
     from src.data.phemex_ohlcv_source import PhemexOHLCVDataSource
     from src.data.hyperliquid_ohlcv_source import HyperliquidOHLCVDataSource
     from src.data.coinbase_ohlcv_source import CoinbaseOHLCVDataSource
     from src.data.binance_ohlcv_source import BinanceOHLCVDataSource
     from src.data.kucoin_ohlcv_source import KucoinOHLCVDataSource
+    from src.data.bybit_ohlcv_source import BybitOHLCVDataSource
+    from src.data.okx_ohlcv_source import OKXOHLCVDataSource
+    from src.data.bitget_ohlcv_source import BitgetOHLCVDataSource
+    from src.data.gateio_ohlcv_source import GateioOHLCVDataSource
+    from src.data.mexc_ohlcv_source import MEXCOHLCVDataSource
 
     # Load config to check exchange flags
     config_path = os.path.join(project_root, 'config.json')
@@ -510,14 +658,29 @@ async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join
         enabled_exchanges.append('binance')
     if config.get('use_kucoin', True):
         enabled_exchanges.append('kucoin')
+    if config.get('use_bybit', False):
+        enabled_exchanges.append('bybit')
+    if config.get('use_okx', False):
+        enabled_exchanges.append('okx')
+    if config.get('use_bitget', False):
+        enabled_exchanges.append('bitget')
+    if config.get('use_gateio', False):
+        enabled_exchanges.append('gateio')
+    if config.get('use_mexc', False):
+        enabled_exchanges.append('mexc')
     
-    logger.info(f"Enabled exchanges: {enabled_exchanges}")
+    logger.info(f"Enabled exchanges for symbol discovery: {enabled_exchanges}")
 
     phemex_ds = PhemexOHLCVDataSource()
     hyperliquid_ds = HyperliquidOHLCVDataSource()
     coinbase_ds = CoinbaseOHLCVDataSource()
     binance_ds = BinanceOHLCVDataSource()
     kucoin_ds = KucoinOHLCVDataSource()
+    bybit_ds = BybitOHLCVDataSource()
+    okx_ds = OKXOHLCVDataSource()
+    bitget_ds = BitgetOHLCVDataSource()
+    gateio_ds = GateioOHLCVDataSource()
+    mexc_ds = MEXCOHLCVDataSource()
 
     os.makedirs(data_dir, exist_ok=True)
 
@@ -603,9 +766,29 @@ async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join
                 base_symbol = symbol
                 fetch_symbol = f"{symbol}USDT"
             elif exchange_name == 'kucoin':
-                # For Kucoin spot, standard USDT pairs
+                # For Kucoin perpetual swaps, standard USDT pairs
                 base_symbol = symbol
-                fetch_symbol = f"{symbol}-USDT"
+                fetch_symbol = f"{symbol}USDTM"  # KuCoin futures use USDTM suffix
+            elif exchange_name == 'bybit':
+                # For Bybit perpetual swaps, USDT pairs
+                base_symbol = symbol
+                fetch_symbol = f"{symbol}/USDT:USDT"  # Bybit uses BASE/USDT:USDT format
+            elif exchange_name == 'okx':
+                # For OKX perpetual swaps, USDT pairs
+                base_symbol = symbol
+                fetch_symbol = f"{symbol}/USDT:USDT"  # OKX uses BASE/USDT:USDT format
+            elif exchange_name == 'bitget':
+                # For Bitget perpetual swaps, USDT pairs
+                base_symbol = symbol
+                fetch_symbol = f"{symbol}/USDT:USDT"  # Bitget uses BASE/USDT:USDT format
+            elif exchange_name == 'gateio':
+                # For Gate.io perpetual swaps, USDT pairs
+                base_symbol = symbol
+                fetch_symbol = f"{symbol}/USDT:USDT"  # Gate.io uses BASE/USDT:USDT format
+            elif exchange_name == 'mexc':
+                # For MEXC perpetual swaps, USDT pairs
+                base_symbol = symbol
+                fetch_symbol = f"{symbol}/USDT:USDT"  # MEXC uses BASE/USDT:USDT format
             else:
                 continue
 
@@ -634,9 +817,14 @@ async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join
         max_concurrent = {
             'hyperliquid': 3,  # ULTRA conservative - only 3 concurrent request for Hyperliquid
             'coinbase': 3,     # ULTRA conservative - only 3 concurrent request for Coinbase  
-            'phemex': 3,        # Conservative - only 3 concurrent requests for Phemex
-            'binance': 3,
-            'kucoin': 3
+            'phemex': 3,       # Conservative - only 3 concurrent requests for Phemex
+            'binance': 3,      # Conservative - only 3 concurrent requests for Binance
+            'kucoin': 3,       # Conservative - only 3 concurrent requests for KuCoin
+            'bybit': 3,        # Conservative - only 3 concurrent requests for Bybit
+            'okx': 3,          # Conservative - only 3 concurrent requests for OKX
+            'bitget': 3,       # Conservative - only 3 concurrent requests for Bitget
+            'gateio': 3,       # Conservative - only 3 concurrent requests for Gate.io
+            'mexc': 3,         # Conservative - only 3 concurrent requests for MEXC
         }.get(exchange_name, 3)
         
         logger.info(f"{exchange_name.upper()}: Processing {len(fetch_tasks)} tasks with {max_concurrent} max concurrent...")
@@ -658,6 +846,16 @@ async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join
                         await asyncio.sleep(4.0)  # 4 second for Binance (most tolerant)
                     elif exchange_name == 'kucoin':
                         await asyncio.sleep(4.0)  # 4 second for Kucoin (most tolerant)
+                    elif exchange_name == 'bybit':
+                        await asyncio.sleep(4.0)  # 4 second for Bybit (most tolerant)
+                    elif exchange_name == 'okx':
+                        await asyncio.sleep(6.0)  # 6 second for OKX (most sensitive)
+                    elif exchange_name == 'bitget':
+                        await asyncio.sleep(4.0)  # 4 second for Bitget (most tolerant)
+                    elif exchange_name == 'gateio':
+                        await asyncio.sleep(4.0)  # 4 second for Gate.io (most tolerant)
+                    elif exchange_name == 'mexc':
+                        await asyncio.sleep(4.0)  # 4 second for MEXC (most tolerant)
                     else:
                         await asyncio.sleep(5.0)  # Default 5 second delay
                     
@@ -722,6 +920,16 @@ async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join
         exchange_tasks.append(('binance', symbols['unmatched_binance'], binance_timeframes, binance_ds))
     if 'kucoin' in enabled_exchanges and symbols.get('unmatched_kucoin'):
         exchange_tasks.append(('kucoin', symbols['unmatched_kucoin'], kucoin_timeframes, kucoin_ds))
+    if 'bybit' in enabled_exchanges and symbols.get('unmatched_bybit'):
+        exchange_tasks.append(('bybit', symbols['unmatched_bybit'], bybit_timeframes, bybit_ds))
+    if 'okx' in enabled_exchanges and symbols.get('unmatched_okx'):
+        exchange_tasks.append(('okx', symbols['unmatched_okx'], okx_timeframes, okx_ds))
+    if 'bitget' in enabled_exchanges and symbols.get('unmatched_bitget'):
+        exchange_tasks.append(('bitget', symbols['unmatched_bitget'], bitget_timeframes, bitget_ds))
+    if 'gateio' in enabled_exchanges and symbols.get('unmatched_gateio'):
+        exchange_tasks.append(('gateio', symbols['unmatched_gateio'], gateio_timeframes, gateio_ds))
+    if 'mexc' in enabled_exchanges and symbols.get('unmatched_mexc'):
+        exchange_tasks.append(('mexc', symbols['unmatched_mexc'], mexc_timeframes, mexc_ds))
 
     # Process all exchanges concurrently with asyncio
     if exchange_tasks:
@@ -1421,14 +1629,21 @@ def scan_all_result_files(results_dir=os.path.join(project_root, 'results')):
                                            get_all_phemex_contract_symbols, get_phemex_base_symbols, 
                                            get_hyperliquid_symbols,
                                            get_coinbase_spot_symbols, get_coinbase_base_symbols,
-                                           get_binance_spot_symbols, get_binance_base_symbols )
+                                           get_binance_spot_symbols, get_binance_base_symbols,
+                                           get_bitget_base_symbols, get_bitget_symbols,
+                                           get_gateio_base_symbols, get_gateio_symbols,
+                                           get_mexc_base_symbols, get_mexc_symbols,
+                                           get_okx_base_symbols, get_okx_symbols,
+                                           get_bybit_base_symbols, get_bybit_symbols)
         from src.data.symbol_intersection import (get_common_base_symbols, async_get_common_base_symbols,
                                               get_hyperliquid_unmatched_symbols, async_get_hyperliquid_unmatched_symbols,
                                               async_get_unmatched_coinbase_symbols, get_unmatched_coinbase_symbols,
                                               get_unmatched_binance_symbols, async_get_unmatched_binance_symbols,
                                               get_unmatched_phemex_symbols, async_get_unmatched_phemex_symbols,
                                               get_unmatched_kucoin_symbols, async_get_unmatched_kucoin_symbols,
-                                              get_phemex_base, get_binance_base, get_coinbase_base, get_kucoin_base)
+                                              get_phemex_base, get_binance_base, get_coinbase_base, get_kucoin_base,
+                                              get_unmatched_bitget_symbols, get_unmatched_bybit_symbols,
+                                              get_unmatched_gateio_symbols, get_unmatched_mexc_symbols, get_unmatched_okx_symbols)
         
         # Hyperliquid: extract symbols from DataFrame
         hyperliquid_df = get_hyperliquid_symbols()
@@ -1447,6 +1662,21 @@ def scan_all_result_files(results_dir=os.path.join(project_root, 'results')):
         
         # Kucoin: get unmatched symbols
         kucoin_symbols = set(get_unmatched_kucoin_symbols())
+        
+        # Bybit: get unmatched symbols
+        bybit_symbols = set(get_unmatched_bybit_symbols())
+        
+        # OKX: get unmatched symbols
+        okx_symbols = set(get_unmatched_okx_symbols())
+        
+        # Bitget: get unmatched symbols
+        bitget_symbols = set(get_unmatched_bitget_symbols())
+        
+        # Gate.io: get unmatched symbols
+        gateio_symbols = set(get_unmatched_gateio_symbols())
+        
+        # MEXC: get unmatched symbols
+        mexc_symbols = set(get_unmatched_mexc_symbols())
     except Exception as e:
         logger.warning(f"Could not load symbol lists for exchange mapping: {e}")
         hyperliquid_symbols = set()
@@ -1454,6 +1684,11 @@ def scan_all_result_files(results_dir=os.path.join(project_root, 'results')):
         coinbase_symbols = set()
         binance_symbols = set()
         kucoin_symbols = set()
+        bybit_symbols = set()
+        okx_symbols = set()
+        bitget_symbols = set()
+        gateio_symbols = set()
+        mexc_symbols = set()
 
     def get_base_symbol(symbol):
         """Normalize symbol for Coinbase: remove leading 'u' and digits (e.g. u1000SHIB -> SHIB)"""
@@ -1465,7 +1700,7 @@ def scan_all_result_files(results_dir=os.path.join(project_root, 'results')):
             base_symbol = get_base_symbol(symbol)
             if base_symbol in coinbase_symbols:
                 return ['coinbase']
-        # Others: prefer Hyperliquid, then Phemex, then Binance, then Kucoin (fallback)
+        # Others: prefer Hyperliquid, then Phemex, then Binance, then new exchanges, then Kucoin (fallback)
         exchanges = []
         # Hyperliquid: match base symbol (e.g. BTC)
         if symbol in hyperliquid_symbols:
@@ -1480,6 +1715,21 @@ def scan_all_result_files(results_dir=os.path.join(project_root, 'results')):
         # Binance: match base symbol (e.g. BTC)
         if symbol in binance_symbols:
             exchanges.append('binance')
+        # Bybit: match base symbol (e.g. BTC)
+        if symbol in bybit_symbols:
+            exchanges.append('bybit')
+        # OKX: match base symbol (e.g. BTC)
+        if symbol in okx_symbols:
+            exchanges.append('okx')
+        # Bitget: match base symbol (e.g. BTC)
+        if symbol in bitget_symbols:
+            exchanges.append('bitget')
+        # Gate.io: match base symbol (e.g. BTC)
+        if symbol in gateio_symbols:
+            exchanges.append('gateio')
+        # MEXC: match base symbol (e.g. BTC)
+        if symbol in mexc_symbols:
+            exchanges.append('mexc')
         # Kucoin: match base symbol (e.g. BTC) - CHECK LAST as fallback
         # Only add Kucoin if no other exchange matched
         if not exchanges and symbol in kucoin_symbols:
@@ -2172,17 +2422,17 @@ if __name__ == "__main__":
                             # Strategy 1: RSI Divergence - Best: 4h/1d, Poor: 1m-30m (too noisy)
                             rsi_divergence_mask = (
                                 (filtered['strategy_name'] == 'rsi_divergence') & 
-                                (filtered['timeframe'].isin(['1m', '5m', '15m', '30m']))
+                                (filtered['timeframe'].isin(['1m', '3m', '5m', '15m', '30m']))
                             )
                             filtered = filtered[~rsi_divergence_mask]
                             excluded_count = rsi_divergence_mask.sum()
                             if excluded_count > 0:
                                 print(f"🚫 Excluded {excluded_count} rsi_divergence strategies (1m-30m: too noisy for divergence)")
 
-                            # Strategy 2: MACD + EMA + ATR - Best: 1d/4h, Poor: 1m/5m/1d (whipsaws, slower MACD)
+                            # Strategy 2: MACD + EMA + ATR - Best: 1d/4h, Poor: 1m/5m (whipsaws, slower MACD)
                             macd_ema_atr_mask = (
                                 (filtered['strategy_name'] == 'macd_ema_atr') & 
-                                (filtered['timeframe'].isin(['1m', '5m', '15m', '30m']))
+                                (filtered['timeframe'].isin(['1m', '3m', '5m', '15m', '30m']))
                             )
                             filtered = filtered[~macd_ema_atr_mask]
                             excluded_count = macd_ema_atr_mask.sum()
@@ -2192,7 +2442,7 @@ if __name__ == "__main__":
                             # Strategy 3: Breakout - Best: 1h-4h (fast breakouts), Poor: 15m/30m (too much noise)
                             breakout_mask = (
                                 (filtered['strategy_name'] == 'breakout') & 
-                                (filtered['timeframe'].isin(['1m', '5m', '15m', '30m']))
+                                (filtered['timeframe'].isin(['1m', '3m', '5m', '15m', '30m']))
                             )
                             filtered = filtered[~breakout_mask]
                             excluded_count = breakout_mask.sum()
@@ -2202,17 +2452,17 @@ if __name__ == "__main__":
                             # Strategy 4: Adaptive RSI - Best: 1h (crypto), Poor: 1m-15m/1d (noise/too slow)
                             adaptive_rsi_mask = (
                                 (filtered['strategy_name'] == 'adaptive_rsi') & 
-                                (filtered['timeframe'].isin(['1m', '5m', '15m', '1d']))
+                                (filtered['timeframe'].isin(['1m', '3m', '5m', '15m', '1d']))
                             )
                             filtered = filtered[~adaptive_rsi_mask]
                             excluded_count = adaptive_rsi_mask.sum()
                             if excluded_count > 0:
                                 print(f"🚫 Excluded {excluded_count} adaptive_rsi strategies (1m-15m: noise, 1d: too slow)")
 
-                            # Strategy 5: EMA Channel Scalping - Best: 1h/2h (scalping), Poor: 4h+ (too slow)
+                            # Strategy 5: EMA Channel Scalping - Best: 1h/2h (scalping), Poor: 1m-5m (noise) and 4h+ (too slow)
                             ema_channel_scalping_mask = (
                                 (filtered['strategy_name'] == 'ema_channel_scalping') & 
-                                (filtered['timeframe'].isin(['1m', '5m', '4h', '6h', '12h', '1d']))
+                                (filtered['timeframe'].isin(['1m', '3m', '5m', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M']))
                             )
                             filtered = filtered[~ema_channel_scalping_mask]
                             excluded_count = ema_channel_scalping_mask.sum()
@@ -2222,7 +2472,7 @@ if __name__ == "__main__":
                             # Strategy 6: EMA Ribbon Pullback - Best: 4h/1d (trend), Poor: 1m-30m (whipsaws)
                             ema_ribbon_pullback_mask = (
                                 (filtered['strategy_name'] == 'ema_ribbon_pullback') & 
-                                (filtered['timeframe'].isin(['1m', '5m', '15m', '30m']))
+                                (filtered['timeframe'].isin(['1m', '3m', '5m', '15m', '30m']))
                             )
                             filtered = filtered[~ema_ribbon_pullback_mask]
                             excluded_count = ema_ribbon_pullback_mask.sum()
@@ -2232,7 +2482,7 @@ if __name__ == "__main__":
                             # Strategy 7: Markov Chain - Best: 1d (stable patterns), Poor: 1m-30m (noise)
                             markov_chain_mask = (
                                 (filtered['strategy_name'] == 'markov_chain') & 
-                                (filtered['timeframe'].isin(['1m', '5m', '15m', '30m']))
+                                (filtered['timeframe'].isin(['1m', '3m', '5m', '15m', '30m']))
                             )
                             filtered = filtered[~markov_chain_mask]
                             excluded_count = markov_chain_mask.sum()
@@ -2242,27 +2492,27 @@ if __name__ == "__main__":
                             # Strategy 8: Mean Reversion BB RSI - Best: 4h (Dataset dependent), Poor: 1m/5m/1d
                             mean_reversion_bb_rsi_mask = (
                                 (filtered['strategy_name'] == 'mean_reversion_bb_rsi') & 
-                                (filtered['timeframe'].isin(['1m', '5m', '1d']))
+                                (filtered['timeframe'].isin(['1m', '3m', '5m', '1d']))
                             )
                             filtered = filtered[~mean_reversion_bb_rsi_mask]
                             excluded_count = mean_reversion_bb_rsi_mask.sum()
                             if excluded_count > 0:
                                 print(f"🚫 Excluded {excluded_count} mean_reversion_bb_rsi strategies (1m-5m: noise, 1d: too slow)")
 
-                            # Strategy 9: Statistical Arbitrage - Best: 1h (SHORT-LIVED moves), Poor: 1d+ (too slow)
+                            # Strategy 9: Statistical Arbitrage - Best: 1h (SHORT-LIVED moves), Poor: 1m-5m (noise) and 1d+ (too slow)
                             statistical_arbitrage_mask = (
                                 (filtered['strategy_name'] == 'statistical_arbitrage') & 
-                                (filtered['timeframe'].isin(['1m', '5m', '4h', '6h', '12h', '1d']))
+                                (filtered['timeframe'].isin(['1m', '3m', '5m', '4h', '6h', '8h', '12h', '1d', '3d', '1w', '1M']))
                             )
                             filtered = filtered[~statistical_arbitrage_mask]
                             excluded_count = statistical_arbitrage_mask.sum()
                             if excluded_count > 0:
                                 print(f"🚫 Excluded {excluded_count} statistical_arbitrage strategies (1m-5m: noise, 4h+: misses short-lived opportunities)")
 
-                            # Strategy 10: Supertrend - Best: 1d/4h (trend following), Poor: 1m/5m (false signals)
+                            # Strategy 10: Supertrend - Best: 1d/4h (trend following), Poor: 1m-30m (false signals)
                             supertrend_mask = (
                                 (filtered['strategy_name'] == 'supertrend') & 
-                                (filtered['timeframe'].isin(['1m', '5m', '15m', '30m']))
+                                (filtered['timeframe'].isin(['1m', '3m', '5m', '15m', '30m']))
                             )
                             filtered = filtered[~supertrend_mask]
                             excluded_count = supertrend_mask.sum()
@@ -2272,7 +2522,7 @@ if __name__ == "__main__":
                             # Strategy 11: Supply Demand Spot - Best: BTC 1h/ETH 4h (zone bounces), Poor: 1m-30m/PAXG 1d
                             supply_demand_mask = (
                                 (filtered['strategy_name'] == 'supply_demand_spot') & 
-                                (filtered['timeframe'].isin(['1m', '5m', '15m', '30m', '1d']))
+                                (filtered['timeframe'].isin(['1m', '3m', '5m', '15m', '30m', '1d']))
                             )
                             filtered = filtered[~supply_demand_mask]
                             excluded_count = supply_demand_mask.sum()

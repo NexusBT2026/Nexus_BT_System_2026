@@ -218,13 +218,18 @@ def create_exchange_buckets() -> Dict[str, TokenBucket]:
     """
     Create TokenBucket instances for common exchanges with OFFICIAL rate limits from CCXT and exchange documentation.
     
-    Official Rate Limits (Verified 2025-11-10):
+    Official Rate Limits (Verified 2025-11-10, Updated 2026-01-03):
     - Phemex: 120.5ms rateLimit in CCXT = 8.30 requests/second (CCXT verified)
     - Hyperliquid: 100 capacity, 10 tokens/sec (Official SDK specs - volume-based dynamic limits)
       Formula: 10,000 + (1 per USDC traded), IP: 1,200 weight/min = 60 info req/min
     - Coinbase Advanced: 34ms rateLimit in CCXT = 29.41 requests/second (CCXT verified)
     - Binance Spot: 50ms rateLimit in CCXT = 20.00 requests/second (CCXT verified)
     - KuCoin Futures: 10ms rateLimit in CCXT = 100.00 requests/second (CCXT verified) ⚠️ FASTEST!
+    - Bybit: 20ms rateLimit in CCXT = 50.00 requests/second (CCXT verified 2026-01-03)
+    - OKX: 110ms rateLimit in CCXT = 9.09 requests/second (CCXT verified 2026-01-03)
+    - Bitget: 50ms rateLimit in CCXT = 20.00 requests/second (CCXT verified 2026-01-03)
+    - Gate.io: 50ms rateLimit in CCXT = 20.00 requests/second (CCXT verified 2026-01-03)
+    - MEXC: 50ms rateLimit in CCXT = 20.00 requests/second (CCXT verified 2026-01-03)
     
     Returns:
         Dict mapping exchange names to TokenBucket instances with OFFICIAL limits
@@ -235,6 +240,11 @@ def create_exchange_buckets() -> Dict[str, TokenBucket]:
         'coinbase': TokenBucket(100, 29.41, "Coinbase", False, 60),           # CCXT: 34ms = 29.41 req/sec (VERIFIED)
         'binance': TokenBucket(100, 20.0, "Binance", False, 60),              # CCXT: 50ms = 20.00 req/sec (VERIFIED)
         'kucoin': TokenBucket(100, 100.0, "KuCoin", False, 60),               # CCXT: 10ms = 100.00 req/sec (VERIFIED) ⚠️ FASTEST!
+        'bybit': TokenBucket(100, 50.0, "Bybit", False, 60),                  # CCXT: 20ms = 50.00 req/sec (VERIFIED 2026-01-03)
+        'okx': TokenBucket(100, 9.09, "OKX", False, 60),                      # CCXT: 110ms = 9.09 req/sec (VERIFIED 2026-01-03)
+        'bitget': TokenBucket(100, 20.0, "Bitget", False, 60),                # CCXT: 50ms = 20.00 req/sec (VERIFIED 2026-01-03)
+        'gateio': TokenBucket(100, 20.0, "Gateio", False, 60),                # CCXT: 50ms = 20.00 req/sec (VERIFIED 2026-01-03)
+        'mexc': TokenBucket(100, 20.0, "MEXC", False, 60),                    # CCXT: 50ms = 20.00 req/sec (VERIFIED 2026-01-03)
     }
 
 
