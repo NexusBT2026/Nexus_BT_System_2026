@@ -54,6 +54,9 @@ requirements-premium.txt
 # Premium reporting module (competitive advantage - 372 lines of production code)
 src/reporting/
 
+# Protect own strategy folder
+quant_strategies/
+
 # Professional tear sheet outputs (client deliverables)
 reports/
 *_tearsheet*.html
@@ -64,6 +67,10 @@ reports/
 .idea/
 *.swp
 *.swo
+
+# Temporary test output files
+error_log.txt
+output.txt
 
 # OS
 .DS_Store

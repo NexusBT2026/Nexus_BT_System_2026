@@ -148,7 +148,7 @@ class BacktestEngine:
                 logging.error(f"Error in hyperopt objective: {e}")
                 return {'loss': float('inf'), 'status': STATUS_OK, 'eval_time': None}
         
-        print(f"Starting Bayesian optimization with {max_evals} trials...")
+        # print(f"Starting Bayesian optimization with {max_evals} trials...")
         
         try:
             best = fmin(
@@ -340,7 +340,7 @@ class BacktestEngine:
         """Fallback random search if hyperopt fails"""
         import random
         
-        print(f"Running fallback random search with {max_evals} trials...")
+        # print(f"Running fallback random search with {max_evals} trials...")
         
         best_params = None
         best_score = float('-inf')
@@ -381,7 +381,7 @@ class BacktestEngine:
             
             # Progress update
             if (trial + 1) % 10 == 0:
-                print(f"Random search progress: {trial + 1}/{max_evals} trials")
+                pass  # print(f"Random search progress: {trial + 1}/{max_evals} trials")
         
         if best_params is None:
             return {}

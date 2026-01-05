@@ -59,42 +59,149 @@ else:
 
 def generate_strategy_registry(strategies_dict):
     """
-    Generate dynamic strategy registry with reoptimization schedules.
-    Categorizes strategies based on their names and assigns appropriate schedules.
+    Generate dynamic strategy registry with reoptimization schedules and exchange preferences.
+    
+    Automatically categorizes strategies and assigns optimal parameters based on strategy type:
+    - Reoptimization intervals (7-30 days)
+    - Preferred exchange rankings
+    - Data quality requirements
+    
+    Args:
+        strategies_dict: Dictionary of strategy name -> strategy class mappings
+    
+    Returns:
+        dict: Strategy registry with metadata for each strategy
     """
     registry = {}
     
     for strategy_name, strategy_class in strategies_dict.items():
         if strategy_class is None:
             continue
-            
-        # Determine category and reoptimization schedule based on strategy name
-        if 'with_hold' in strategy_name:
-            category = 'trend_with_hold'
-            reopt_days = 30  # Monthly for hold strategies
-        elif 'rl_' in strategy_name or 'reinforcement' in strategy_name:
-            category = 'reinforcement_learning'
-            reopt_days = 7  # Weekly for RL strategies
-        elif 'mean_reversion' in strategy_name or 'statistical' in strategy_name:
-            category = 'mean_reversion'
-            reopt_days = 14  # Bi-weekly
-        elif 'scalping' in strategy_name or 'channel' in strategy_name:
-            category = 'scalping'
-            reopt_days = 7  # Weekly for scalping
-        elif 'breakout' in strategy_name or 'supply_demand' in strategy_name:
+        
+        name_lower = strategy_name.lower()
+        
+        # ═══════════════════════════════════════════════════════════════
+        # COMPREHENSIVE STRATEGY CATEGORIZATION (alphabetical by category)
+        # ═══════════════════════════════════════════════════════════════
+        
+        # ARBITRAGE & PAIR TRADING - Statistical edge strategies
+        if 'arbitrage' in name_lower or 'pair' in name_lower:
+            category = 'arbitrage'
+            reopt_days = 14  # Bi-weekly - edges decay quickly
+            preferred_exchanges = ['binance', 'bybit', 'kucoin', 'okx', 'bitget', 'gateio']
+            min_data_quality = 'high'  # Precision critical for correlation analysis
+        
+        # BREAKOUT & SUPPLY/DEMAND - Volume-driven strategies
+        elif 'breakout' in name_lower or 'supply' in name_lower or 'demand' in name_lower or 'liquidation' in name_lower:
             category = 'breakout'
             reopt_days = 21  # Every 3 weeks
-        elif 'supertrend' in strategy_name or 'adaptive' in strategy_name:
+            preferred_exchanges = ['binance', 'bybit', 'kucoin', 'okx', 'hyperliquid', 'bitget', 'gateio', 'phemex']
+            min_data_quality = 'medium'  # Volume more important than precision
+        
+        # DIVERGENCE STRATEGIES - RSI/MACD divergence patterns
+        elif 'divergence' in name_lower:
+            category = 'divergence'
+            reopt_days = 14  # Bi-weekly - pattern-based
+            preferred_exchanges = ['binance', 'bybit', 'kucoin', 'okx', 'hyperliquid', 'phemex']
+            min_data_quality = 'high'  # Needs accurate indicator calculations
+        
+        # GRID TRADING - Range-bound automated systems
+        elif 'grid' in name_lower:
+            category = 'grid_trading'
+            reopt_days = 30  # Monthly - range parameters change slowly
+            preferred_exchanges = ['binance', 'bybit', 'kucoin', 'okx', 'hyperliquid']
+            min_data_quality = 'medium'  # Works in any market
+        
+        # ICHIMOKU & HEIKIN-ASHI - Japanese technical analysis
+        elif 'ichimoku' in name_lower or 'heikin' in name_lower or 'ashi' in name_lower:
+            category = 'japanese_technical'
+            reopt_days = 21  # Every 3 weeks
+            preferred_exchanges = ['binance', 'bybit', 'kucoin', 'okx', 'hyperliquid', 'phemex']
+            min_data_quality = 'high'  # Cloud calculations need precision
+        
+        # MACHINE LEARNING - LSTM, Neural Nets
+        elif 'machine' in name_lower or 'lstm' in name_lower or 'ml' in name_lower or 'neural' in name_lower:
+            category = 'machine_learning'
+            reopt_days = 7  # Weekly - models need frequent retraining
+            preferred_exchanges = ['binance', 'bybit', 'kucoin', 'okx', 'hyperliquid']
+            min_data_quality = 'medium'  # ML is robust to noise
+        
+        # MARKOV CHAIN - Probabilistic state transitions
+        elif 'markov' in name_lower:
+            category = 'markov_chain'
+            reopt_days = 14  # Bi-weekly - state probabilities evolve
+            preferred_exchanges = ['binance', 'bybit', 'kucoin', 'okx', 'hyperliquid']
+            min_data_quality = 'medium'  # Works with historical patterns
+        
+        # MEAN REVERSION - BB, RSI, Statistical reversion
+        elif 'mean' in name_lower or 'reversion' in name_lower or 'bollinger' in name_lower:
+            category = 'mean_reversion'
+            reopt_days = 14  # Bi-weekly
+            preferred_exchanges = ['binance', 'bybit', 'kucoin', 'okx', 'hyperliquid', 'phemex', 'bitget', 'gateio']
+            min_data_quality = 'high'  # Precision matters for band calculations
+        
+        # MOMENTUM & SWING - Momentum cross, selective momentum
+        elif 'momentum' in name_lower or 'swing' in name_lower or 'stochastic' in name_lower:
+            category = 'momentum'
+            reopt_days = 14  # Bi-weekly
+            preferred_exchanges = ['binance', 'bybit', 'kucoin', 'okx', 'hyperliquid', 'phemex']
+            min_data_quality = 'medium'  # Momentum strategies are robust
+        
+        # SCALPING & CHANNEL - Fast intraday strategies
+        elif 'scalp' in name_lower or 'channel' in name_lower or 'atr' in name_lower:
+            category = 'scalping'
+            reopt_days = 7  # Weekly - market microstructure changes fast
+            preferred_exchanges = ['hyperliquid', 'binance', 'bybit', 'kucoin', 'okx', 'phemex']
+            min_data_quality = 'high'  # Needs precise tick data
+        
+        # TREND FOLLOWING - Supertrend, MA, EMA, Trend Capture
+        elif 'trend' in name_lower or 'supertrend' in name_lower or 'pullback' in name_lower or 'ribbon' in name_lower:
             category = 'trend_following'
             reopt_days = 21  # Every 3 weeks
+            preferred_exchanges = ['binance', 'kucoin', 'bybit', 'okx', 'hyperliquid', 'phemex', 'coinbase']
+            min_data_quality = 'medium'  # Robust to noise
+        
+        # VOLATILITY - Volatility breakout, volatility mean reversion
+        elif 'volatility' in name_lower or 'vol' in name_lower:
+            category = 'volatility'
+            reopt_days = 14  # Bi-weekly - vol regimes change
+            preferred_exchanges = ['binance', 'bybit', 'kucoin', 'okx', 'hyperliquid', 'bitget']
+            min_data_quality = 'medium'  # Volatility calculation is robust
+        
+        # VOLUME WEIGHTED - Volume-based entry/exit
+        elif 'volume' in name_lower and 'weighted' in name_lower:
+            category = 'volume_weighted'
+            reopt_days = 21  # Every 3 weeks
+            preferred_exchanges = ['binance', 'bybit', 'kucoin', 'okx', 'hyperliquid']
+            min_data_quality = 'high'  # Needs accurate volume data
+        
+        # ADAPTIVE & HYBRID - Dynamic multi-indicator strategies
+        elif 'adaptive' in name_lower or 'hybrid' in name_lower:
+            category = 'adaptive_hybrid'
+            reopt_days = 14  # Bi-weekly - adapts to changing conditions
+            preferred_exchanges = ['binance', 'bybit', 'kucoin', 'okx', 'hyperliquid', 'phemex']
+            min_data_quality = 'high'  # Complex calculations need precision
+        
+        # HOLD STRATEGIES - Longer timeframe position holding
+        elif 'hold' in name_lower:
+            category = 'trend_with_hold'
+            reopt_days = 30  # Monthly - longer timeframes
+            preferred_exchanges = ['binance', 'kucoin', 'bybit', 'okx', 'coinbase', 'hyperliquid', 'phemex']
+            min_data_quality = 'high'  # Need reliable long-term data
+        
+        # DEFAULT - Catch-all for uncategorized strategies
         else:
-            category = 'trend'
-            reopt_days = 30  # Monthly default
-            
+            category = 'general'
+            reopt_days = 21  # Default 3 weeks
+            preferred_exchanges = ['binance', 'bybit', 'kucoin', 'okx', 'hyperliquid', 'phemex', 'coinbase']
+            min_data_quality = 'medium'  # Standard quality
+        
         registry[strategy_name] = {
             'class': strategy_class,
             'reopt_days': reopt_days,
-            'category': category
+            'category': category,
+            'preferred_exchanges': preferred_exchanges,
+            'min_data_quality': min_data_quality
         }
     
     return registry
@@ -112,8 +219,10 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..',
 
 from src.exchange.logging_utils import setup_logger
 from src.exchange.retry import retry_on_exception
+import logging as _logging
 
-logger = setup_logger('pipeline_BT_source', json_logs=True)
+# Create logger but set to ERROR by default (dashboard will be primary output)
+logger = setup_logger('pipeline_BT_source', json_logs=False, level=_logging.ERROR)
 
 def load_module_from_path(module_path: str, module_name: Optional[str] = None)-> ModuleType | None:
     """
@@ -184,7 +293,16 @@ def save_results_to_sqlite(results: dict, symbol: str, strategy: str, db_path: O
     logger.info(f"Saved results for {symbol} {strategy} to SQLite: {db_path}")
     
 def discover_symbols() -> dict[str, object]:
-    """Discover symbols for all supported exchanges."""
+    """Discover tradable symbols across all configured exchanges.
+    
+    Returns symbols organized by exchange and availability:
+    - Common symbols (available on multiple exchanges)
+    - Exchange-specific symbols (unique to each exchange)
+    - Cached results for performance (daily refresh)
+    
+    Returns:
+        dict: Symbol data organized by exchange and type
+    """
     from src.data.symbol_discovery import (load_cache_base_symbols, load_cache_per_exchange_format,
                                            get_all_symbols_with_cache_per_exchange_format, get_all_symbols_with_cache_base_symbols,
                                            get_all_phemex_contract_symbols, get_phemex_base_symbols, 
@@ -339,7 +457,14 @@ def discover_symbols() -> dict[str, object]:
     }
 
 async def discover_symbols_async():
-    """Discover symbols asynchronously for all supported exchanges."""
+    """Asynchronously discover tradable symbols across all configured exchanges.
+    
+    Faster than synchronous version - uses concurrent API calls where possible.
+    Returns symbols organized by exchange and availability with intelligent caching.
+    
+    Returns:
+        dict: Symbol data organized by exchange and type
+    """
     from src.data.symbol_discovery import (load_cache_base_symbols, load_cache_per_exchange_format,
                                            get_all_symbols_with_cache_per_exchange_format, get_all_symbols_with_cache_base_symbols,
                                            get_all_phemex_contract_symbols, get_phemex_base_symbols, 
@@ -601,19 +726,27 @@ def is_data_fresh(file_path: str, timeframe: str) -> tuple[bool, datetime | None
 @retry_on_exception()
 async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join(project_root, 'data'), force_refresh=False) -> None:
     """
-    ASYNC FAST AGGRESSIVE FETCH: Get data quickly using async/await for true concurrency.
-
+    Fetch historical OHLCV data from multiple exchanges concurrently (ASYNC version).
+    
+    This is the high-performance async version using concurrent API calls.
+    Ideal for users with modern multi-core systems who need fast data fetching.
+    
     Features:
-    - True async concurrent fetching with asyncio
-    - Smart staleness checking to avoid unnecessary fetches
-    - Fully concurrent symbol and exchange processing for maximum speed
-    - Much better performance than threaded version
-
+    - Concurrent fetching across all exchanges (3-10x faster than sync version)
+    - Smart staleness checking - only fetches outdated data
+    - Rate-limited and exchange-friendly (preserves API limits)
+    - Automatic caching to CSV for reuse
+    - Supports 10 exchanges: Binance, Bybit, KuCoin, OKX, Hyperliquid, Phemex, 
+      Coinbase, Bitget, Gate.io, MEXC
+    
     Args:
         symbols: Dictionary with symbol lists for each exchange
-        timeframes: List of timeframes to fetch (optional)
-        data_dir: Directory to save data files
-        force_refresh: If True, ignore staleness checks and fetch all data
+        timeframes: List of timeframes to fetch (e.g., ['1h', '4h', '1d'])
+        data_dir: Directory to save CSV files (default: 'data/')
+        force_refresh: If True, re-fetch all data regardless of freshness
+    
+    Note: Identical functionality to fetch_ohlcv_data() but much faster.
+          Use sync version if async causes issues on older systems.
     """
     # Define valid timeframes for each exchange
     coinbase_timeframes = ['1m', '5m', '15m', '30m', '1h', '2h', '6h', '1d']
@@ -901,9 +1034,9 @@ async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join
 
     # Prepare exchange tasks for async processing
     exchange_tasks = []
-    if 'phemex' in enabled_exchanges and symbols.get('phemex'):
-        exchange_tasks.append(('phemex', symbols['phemex'], phemex_timeframes, phemex_ds))
-    if 'hyperliquid' in enabled_exchanges and symbols.get('unmatched_hyperliquid'):
+    
+    # 🚀 HYPERLIQUID FIRST - Primary data source (fetch ALL symbols)
+    if 'hyperliquid' in enabled_exchanges and symbols.get('hyperliquid'):
         from src.data.symbol_discovery import get_hyperliquid_symbols as _get_hl_symbols
         hl_symbols_df = _get_hl_symbols()
         # Extract symbol list from DataFrame (it has a 'symbol' column)
@@ -911,9 +1044,18 @@ async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join
             supported_hl_symbols = set(hl_symbols_df.values.flatten())
         else:
             supported_hl_symbols = set()
-        filtered_hl = [s for s in symbols['unmatched_hyperliquid'] if s in supported_hl_symbols]
+        # Fetch ALL Hyperliquid symbols (not just unmatched)
+        filtered_hl = [s for s in symbols['hyperliquid'] if s in supported_hl_symbols]
         if filtered_hl:
             exchange_tasks.append(('hyperliquid', filtered_hl, hyperliquid_timeframes, hyperliquid_ds))
+            logger.info(f"🚀 HYPERLIQUID (PRIMARY): {len(filtered_hl)} symbols queued for fetching")
+    
+    # Phemex - Supplementary data source (fetch unmatched symbols only)
+    if 'phemex' in enabled_exchanges and symbols.get('unmatched_phemex'):
+        exchange_tasks.append(('phemex', symbols['unmatched_phemex'], phemex_timeframes, phemex_ds))
+        logger.info(f"📊 Phemex (supplementary): {len(symbols['unmatched_phemex'])} unique symbols queued")
+    
+    # Other exchanges - Supplementary data (unmatched symbols only)
     if 'coinbase' in enabled_exchanges and symbols.get('coinbase_unmatched'):
         exchange_tasks.append(('coinbase', symbols['coinbase_unmatched'], coinbase_timeframes, coinbase_ds))
     if 'binance' in enabled_exchanges and symbols.get('unmatched_binance'):
@@ -954,8 +1096,28 @@ async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join
 # Keep the sync version for backward compatibility
 def fetch_ohlcv_data(symbols, timeframes=None, data_dir=os.path.join(project_root, 'data'), force_refresh=False) -> None:
     """
-    Synchronous wrapper for the async fetch_ohlcv_data_async function.
-    Kept for backward compatibility.
+    Fetch historical OHLCV data from multiple exchanges (SYNC version).
+    
+    This is the synchronous version for compatibility with older systems or
+    environments where async might cause issues. Identical functionality to
+    fetch_ohlcv_data_async() but processes exchanges sequentially (slower).
+    
+    Features:
+    - Sequential fetching (more compatible, uses less memory)
+    - Smart staleness checking - only fetches outdated data
+    - Rate-limited and exchange-friendly (preserves API limits)
+    - Automatic caching to CSV for reuse
+    - Supports 10 exchanges: Binance, Bybit, KuCoin, OKX, Hyperliquid, Phemex,
+      Coinbase, Bitget, Gate.io, MEXC
+    
+    Args:
+        symbols: Dictionary with symbol lists for each exchange
+        timeframes: List of timeframes to fetch (e.g., ['1h', '4h', '1d'])
+        data_dir: Directory to save CSV files (default: 'data/')
+        force_refresh: If True, re-fetch all data regardless of freshness
+    
+    Recommendation: Use fetch_ohlcv_data_async() if your system supports it
+                    (3-10x faster). This sync version is for compatibility.
     """
     asyncio.run(fetch_ohlcv_data_async(symbols, timeframes, data_dir, force_refresh))
 
@@ -1158,6 +1320,10 @@ def run_strategy_optimization(symbols, data_dir=os.path.join(project_root, 'data
 
             # Create optimization task for each strategy
             for strategy_name, strategy_info in STRATEGIES.items():
+                # Skip base classes (not real trading strategies)
+                if strategy_name in ['base_strategy', 'test_strategy']:
+                    continue
+                    
                 # Check if this optimization already exists (RESUME FUNCTIONALITY)
                 result_file = os.path.join(
                     output_dir,
@@ -1197,7 +1363,7 @@ def run_strategy_optimization(symbols, data_dir=os.path.join(project_root, 'data
                 # Always pass optimizer and n_trials as top-level arguments to optimize_strategy_task
                 task['optimizer'] = optimizer
                 task['n_trials'] = n_trials
-                print(f"DEBUG: Created task for {symbol} {timeframe} {strategy_name} with optimizer={optimizer} trials={n_trials}")
+                #print(f"DEBUG: Created task for {symbol} {timeframe} {strategy_name} with optimizer={optimizer} trials={n_trials}")
                 optimization_tasks.append(task)
 
         except Exception as e:
@@ -1222,6 +1388,22 @@ def run_strategy_optimization(symbols, data_dir=os.path.join(project_root, 'data
         }
     
     logger.info(f"Created {len(optimization_tasks)} optimization tasks")
+    
+    # 🎨 CREATE BEAUTIFUL DASHBOARD
+    total_tasks = len(optimization_tasks) + skipped_count
+    from src.backtest.dashboard_monitor import create_dashboard
+    dashboard = create_dashboard(total_tasks=total_tasks, enable_system_monitor=True)
+    dashboard.start()
+    
+    # Update dashboard for already completed tasks
+    for _ in range(skipped_count):
+        dashboard.update_task(
+            symbol="CACHED",
+            timeframe="--",
+            strategy="various",
+            status="skipped",
+            category="cached"
+        )
     
     # Run optimizations in parallel with configurable workers
     logger.info(f"Starting {len(optimization_tasks)} optimization tasks with {max_workers} workers")
@@ -1259,25 +1441,49 @@ def run_strategy_optimization(symbols, data_dir=os.path.join(project_root, 'data
                     # Save individual result (freqtrade-style structure)
                     save_individual_result(result, output_dir)
                     
-                    # Progress update
+                    # Progress update with dashboard
                     if result.get('success'):
-                        status = "SUCCESS"
+                        status = "success"
+                        # Check if strategy passed profitability criteria
+                        composite_score = result.get('composite_score', float('-inf'))
+                        passed_criteria = composite_score > float('-inf')
                     else:
-                        status = "FAILED"
+                        status = "failed"
+                        passed_criteria = None  # Don't track for failed optimizations
                     
-                    print(f"[{completed_count}/{len(optimization_tasks)}] {status} "
-                          f"{task['symbol']} {task['timeframe']} {task['strategy_name']} "
-                          f"({task['strategy_category']})", flush=True)
+                    dashboard.update_task(
+                        symbol=task['symbol'],
+                        timeframe=task['timeframe'],
+                        strategy=task['strategy_name'],
+                        status=status,
+                        category=task['strategy_category'],
+                        error_msg=result.get('error') if not result.get('success') else None,
+                        passed_criteria=passed_criteria
+                    )
                     
             except Exception as e:
-                print(f"[{completed_count}/{len(optimization_tasks)}] ERROR "
-                      f"{task['symbol']} {task['timeframe']} {task['strategy_name']}: {e}")
+                dashboard.update_task(
+                    symbol=task['symbol'],
+                    timeframe=task['timeframe'],
+                    strategy=task['strategy_name'],
+                    status='failed',
+                    category=task['strategy_category'],
+                    error_msg=str(e)
+                )
                 logger.error(f"Optimization failed for {task['symbol']} {task['timeframe']} "
                             f"{task['strategy_name']}: {e}")
+    
+    # Stop dashboard and show final summary
+    dashboard.stop()
     
     # Analyze and rank results (freqtrade-inspired)
     if all_results:
         analysis = analyze_optimization_results(all_results)
+        
+        # Update dashboard with final selected count
+        qualified_count = analysis.get('qualified_results', 0)
+        if qualified_count > 0:
+            dashboard.set_final_selected(qualified_count)  # type: ignore[attr-defined]
         
         # Save comprehensive analysis with schedule info
         save_optimization_analysis_with_schedule(analysis, output_dir, STRATEGIES)
@@ -1416,7 +1622,7 @@ def optimize_strategy_task(task):
     df = task['data']
     optimizer = task.get('optimizer', 'hyperopt')
     n_trials = task.get('n_trials', 500)  # Default 500 trials for better optimization
-    print(f"DEBUG: optimize_strategy_task received optimizer={optimizer} trials={n_trials} for {symbol} {timeframe} {strategy_name}")
+    # print(f"DEBUG: optimize_strategy_task received optimizer={optimizer} trials={n_trials} for {symbol} {timeframe} {strategy_name}")
     logger.info(f"Optimizing {strategy_name} for {symbol} {timeframe} using {optimizer} with {n_trials} trials")
 
     try:

@@ -10,6 +10,7 @@ requests
 psutil
 matplotlib
 python-dotenv
+rich  # Beautiful terminal UI and progress monitoring
 
 # Data science / ML / RL
 numpy==2.2.6  # Compatible with CuPy, numba, and pandas-ta

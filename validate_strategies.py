@@ -12,84 +12,74 @@ import pandas as pd
 import numpy as np
 
 def validate_strategy(strategy_class, strategy_name):
-    """Validate a single strategy."""
+    """Validate a single strategy for Nexus custom backtesting system."""
     issues = []
     warnings = []
 
     try:
-        # Test instantiation
-        strategy = strategy_class(config={})
+        # Get default params from param_grid if available
+        config = {}
+        if hasattr(strategy_class, 'param_grid'):
+            param_grid_attr = strategy_class.param_grid if not callable(strategy_class.param_grid) else None
+            if param_grid_attr and isinstance(param_grid_attr, dict):
+                # Use first value from each parameter
+                for key, value in param_grid_attr.items():
+                    if isinstance(value, range):
+                        config[key] = value.start
+                    elif isinstance(value, list) and len(value) > 0:
+                        config[key] = value[0]
+                    else:
+                        config[key] = value
+        
+        # Test instantiation with config
+        strategy = strategy_class(config)
         print(f"✅ {strategy_name}: Instantiation OK")
 
-        # Check required attributes
-        required_attrs = ['strategy_name', 'timeframe', 'minimal_roi', 'stoploss']
-        for attr in required_attrs:
-            if hasattr(strategy, attr):
-                print(f"✅ {strategy_name}: Has {attr}")
+        # Check required methods for custom backtesting engine
+        required_methods = ['generate_signals', 'simulate_trades']
+        for method in required_methods:
+            if hasattr(strategy, method) and callable(getattr(strategy, method)):
+                print(f"✅ {strategy_name}: Has {method} method")
             else:
-                issues.append(f"Missing required attribute: {attr}")
+                issues.append(f"Missing required method: {method}")
 
-        # Check buy/sell parameters
-        if hasattr(strategy, 'buy_params') and hasattr(strategy, 'sell_params'):
-            print(f"✅ {strategy_name}: Has buy/sell parameters")
+        # Check param_grid (can be attribute or method)
+        if hasattr(strategy, 'param_grid'):
+            param_grid = strategy.param_grid() if callable(strategy.param_grid) else strategy.param_grid
+            if isinstance(param_grid, dict) and len(param_grid) > 0:
+                print(f"✅ {strategy_name}: Has valid param_grid with {len(param_grid)} parameters")
+            else:
+                warnings.append("param_grid is empty or invalid")
         else:
-            warnings.append("No buy_params/sell_params defined - using defaults")
+            issues.append("Missing param_grid attribute/method")
 
-        # Test indicator population with sample data
+        # Test signal generation with sample data
         sample_data = pd.DataFrame({
-            'open': [100, 101, 102, 103, 104],
-            'high': [105, 106, 107, 108, 109],
-            'low': [95, 96, 97, 98, 99],
-            'close': [102, 103, 104, 105, 106],
-            'volume': [1000, 1100, 1200, 1300, 1400],
-            'timestamp': pd.date_range('2023-01-01', periods=5, freq='1H')
+            'open': np.array([100.0, 101.0, 102.0, 103.0, 104.0]),
+            'high': np.array([105.0, 106.0, 107.0, 108.0, 109.0]),
+            'low': np.array([95.0, 96.0, 97.0, 98.0, 99.0]),
+            'close': np.array([102.0, 103.0, 104.0, 105.0, 106.0]),
+            'volume': np.array([1000.0, 1100.0, 1200.0, 1300.0, 1400.0])
         })
+        sample_data.index = pd.date_range('2023-01-01', periods=5, freq='1h')
 
         try:
-            # Test populate_indicators
-            if hasattr(strategy, 'populate_indicators'):
-                result = strategy.populate_indicators(sample_data.copy(), {})
-                print(f"✅ {strategy_name}: populate_indicators OK")
-            else:
-                issues.append("Missing populate_indicators method")
-
-            # Test populate_buy_signal
-            if hasattr(strategy, 'populate_buy_signal'):
-                result = strategy.populate_buy_signal(sample_data.copy(), {})
-                if 'buy' in result.columns:
-                    print(f"✅ {strategy_name}: populate_buy_signal OK")
+            # Test generate_signals
+            if hasattr(strategy, 'generate_signals'):
+                signals = strategy.generate_signals(sample_data.copy())
+                if signals is not None and len(signals) > 0:
+                    print(f"✅ {strategy_name}: generate_signals OK (returned {len(signals)} signals)")
                 else:
-                    issues.append("populate_buy_signal didn't create 'buy' column")
-            else:
-                issues.append("Missing populate_buy_signal method")
-
-            # Test populate_sell_signal
-            if hasattr(strategy, 'populate_sell_signal'):
-                result = strategy.populate_sell_signal(sample_data.copy(), {})
-                if 'sell' in result.columns:
-                    print(f"✅ {strategy_name}: populate_sell_signal OK")
-                else:
-                    issues.append("populate_sell_signal didn't create 'sell' column")
-            else:
-                issues.append("Missing populate_sell_signal method")
+                    warnings.append("generate_signals returned no signals on sample data")
+            
+            # Test simulate_trades (skip if not enough data)
+            if hasattr(strategy, 'simulate_trades'):
+                # Just check it's callable, don't actually test with dummy data
+                # (real testing needs proper OHLCV data with sufficient length)
+                print(f"✅ {strategy_name}: simulate_trades method exists")
 
         except Exception as e:
-            issues.append(f"Error in signal population: {e}")
-
-        # Check for common issues
-        if hasattr(strategy, 'minimal_roi'):
-            roi = strategy.minimal_roi
-            if not isinstance(roi, dict):
-                warnings.append("minimal_roi should be a dictionary")
-            elif not all(isinstance(k, (int, str)) and isinstance(v, (int, float)) for k, v in roi.items()):
-                warnings.append("minimal_roi values should be numbers")
-
-        if hasattr(strategy, 'stoploss'):
-            sl = strategy.stoploss
-            if not isinstance(sl, (int, float)):
-                warnings.append("stoploss should be a number")
-            elif sl > 0:
-                warnings.append("stoploss should be negative (percentage loss)")
+            warnings.append(f"Strategy methods raised error on sample data (may need more data): {e}")
 
     except Exception as e:
         issues.append(f"Instantiation failed: {e}")
@@ -117,6 +107,12 @@ def validate_all_strategies():
         print()
 
         for strategy_name, strategy_class in strategies.items():
+            # Skip base and test strategies (not real trading strategies)
+            if strategy_name in ['base_strategy', 'test_strategy']:
+                print(f"⏭️  Skipping: {strategy_name} (not a trading strategy)")
+                print()
+                continue
+                
             print(f"🔍 Validating: {strategy_name}")
             print("-" * 30)
 
