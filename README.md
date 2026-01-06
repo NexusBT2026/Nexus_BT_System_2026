@@ -11,7 +11,7 @@ A comprehensive, modular backtesting framework inspired by Freqtrade, featuring 
 - **Smart data freshness checking** to avoid unnecessary fetches
 - **GPU-accelerated computations** where available
 
-### Multi-Exchange Support (11 Exchanges Integrated)
+### Multi-Exchange Support (10 Exchanges Integrated)
 - **Hyperliquid** - Perpetual futures (~200 symbols) - PRIMARY DATA SOURCE
 - **Phemex** - Perpetual futures with unique contract formats
 - **Binance** - Spot trading (USDT pairs)
