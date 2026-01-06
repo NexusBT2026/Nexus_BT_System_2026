@@ -417,11 +417,12 @@ Need custom strategy development or comprehensive backtesting analysis?
 
 **🥇 Premium Tier** - Unlimited strategy combinations
 - Complete portfolio analysis
-- Advanced risk analytics
-- Monte Carlo simulations
-- Walk-forward validation
+- Strategy quality assessment (Gold/Silver/Bronze grading)
+- Advanced risk analytics with Monte Carlo simulations
+- Trade timing analysis (optimal entry/exit hours)
+- Walk-forward validation (anti-overfitting proof)
 
-All tiers include professional HTML reports, interactive visualizations, and detailed documentation.
+All tiers include professional HTML reports, interactive visualizations, and comprehensive documentation.
 
 *Contact via Fiverr for detailed pricing and custom requirements.*
 
