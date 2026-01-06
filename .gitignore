@@ -24,6 +24,9 @@ archived_data/
 # Client deliveries (Fiverr orders)
 client_deliveries/
 
+# Private client order processing system (competitive advantage)
+nexus_private/
+
 # Test files building the project enhancements
 testing_new_features/
 
@@ -41,6 +44,9 @@ PRE_RELEASE_CHECKLIST.md
 run_daily_archive.bat
 archived_data/TASK_SCHEDULER_SETUP.txt
 src/archiver/
+
+# Fiverr position sizing service tool (not part of BT system)
+src/backtest/position_sizing.py
 
 # Test and optimization files
 test_optuna_optimizer.py

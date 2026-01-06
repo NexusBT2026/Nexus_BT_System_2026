@@ -23,7 +23,7 @@ A comprehensive, modular backtesting framework inspired by Freqtrade, featuring 
 - **Gate.io** - Perpetual swaps (USDT pairs)
 - **MEXC** - Perpetual swaps (USDT pairs)
 
-**📊 Total Coverage: 1,110+ unique trading symbols**
+**📊 Total Coverage: 1,140+ unique trading symbols**
 - Hyperliquid provides ~90% of symbol coverage (comprehensive market)
 - Recently added: Bybit, OKX, Bitget, Gate.io, MEXC for expanded coverage
 - Smart symbol intersection to avoid duplicate data fetching
@@ -97,11 +97,27 @@ Edit `config.json` with your exchange API credentials:
   "kucoin_api_key": "YOUR_KUCOIN_API_KEY",
   "kucoin_api_secret": "YOUR_KUCOIN_API_SECRET",
   "kucoin_api_passphrase": "YOUR_KUCOIN_PASSPHRASE",
-  "use_hyperliquid": false,
+  "bybit_api_key": "YOUR_BYBIT_API_KEY",
+  "bybit_api_secret": "YOUR_BYBIT_API_SECRET",
+  "okx_api_key": "YOUR_OKX_API_KEY",
+  "okx_api_secret": "YOUR_OKX_API_SECRET",
+  "okx_api_passphrase": "YOUR_OKX_API_PASSPHRASE",
+  "bitget_api_key": "YOUR_BITGET_API_KEY",
+  "bitget_api_secret": "YOUR_BITGET_API_SECRET",
+  "gateio_api_key": "YOUR_GATEIO_API_KEY",
+  "gateio_api_secret": "YOUR_GATEIO_API_SECRET",
+  "mexc_api_key": "YOUR_MEXC_API_KEY",
+  "mexc_api_secret": "YOUR_MEXC_API_SECRET",
+  "use_hyperliquid": true,
   "use_phemex": true,
   "use_coinbase": false,
-  "use_binance": false,
-  "use_kucoin": false,
+  "use_binance": true,
+  "use_kucoin": true,
+  "use_bybit": true,
+  "use_okx": true,
+  "use_bitget": true,
+  "use_gateio": true,
+  "use_mexc": true,
   "numexpr_max_threads": null
 }
 ```
@@ -301,11 +317,16 @@ Enable/disable exchanges in `config.json`:
 
 ```json
 {
-  "binance_enabled": true,
-  "coinbase_enabled": false,
-  "hyperliquid_enabled": true,
-  "kucoin_enabled": true,
-  "phemex_enabled": true
+  "use_hyperliquid": true,
+  "use_phemex": true,
+  "use_binance": true,
+  "use_coinbase": false,
+  "use_kucoin": true,
+  "use_bybit": true,
+  "use_okx": true,
+  "use_bitget": true,
+  "use_gateio": true,
+  "use_mexc": true
 }
 ```
 
@@ -376,19 +397,35 @@ pip install -r requirements.txt
 - Use `src/utils/analyze_results.py` for detailed result analysis
 - Run `python run_bt.py --help` for all available options
 
-## 💼 Custom Development Services
+## 💼 Professional Services
 
-Need a custom trading strategy or backtesting system tailored to your specific requirements?
+Need custom strategy development or comprehensive backtesting analysis?
 
-**[Hire me on Fiverr](https://www.fiverr.com/viwarshawski/develop-custom-python-cryptocurrency-trading-strategies-and-backtesting)** for professional development services:
+**[Hire me on Fiverr](https://www.fiverr.com/viwarshawski/develop-custom-python-cryptocurrency-trading-strategies-and-backtesting)** for professional quantitative analysis services.
 
-- Custom strategy development
-- Multi-exchange integration
-- Parameter optimization
-- Live trading setup
-- Consultation and support
+### Service Tiers Available
 
-3+ years of experience building production-grade trading systems. All communication via written messages for clear, precise requirements.
+**🥉 Basic Tier** - Single strategy analysis with comprehensive metrics
+- Complete backtest with position sizing optimization
+- Professional performance reports
+- Strategy code and configuration files
+
+**🥈 Standard Tier** - Multi-strategy comparison (up to 3 combinations)
+- Side-by-side performance analysis
+- Institutional-grade tear sheets with 50+ metrics
+- Master summary with ranked results
+
+**🥇 Premium Tier** - Unlimited strategy combinations
+- Complete portfolio analysis
+- Advanced risk analytics
+- Monte Carlo simulations
+- Walk-forward validation
+
+All tiers include professional HTML reports, interactive visualizations, and detailed documentation.
+
+*Contact via Fiverr for detailed pricing and custom requirements.*
+
+---
 
 ## 🤝 Contributing
 
@@ -407,80 +444,6 @@ Same as the original Nexus project.
 
 - [ ] Web-based dashboard GUI
 - [ ] Live trading integration
-- [ ] **Additional exchanges (Phase 3 - In Progress)**
-  - **Current**: 5 exchanges (Phemex, Hyperliquid, Coinbase, Binance, KuCoin)
-  - **Pending Integration**: 5 new exchanges (Bybit, OKX, Bitget, Gate.io, MEXC)
-  - **Impact**: +169 NEW unique perpetual swap symbols
-  - **Total After Integration**: 976 + existing + 169 new = 1145+ total symbols
-  - **Status**: Symbol discovery complete, OHLCV modules ready, pipeline integration pending
 - [ ] Machine learning-based strategy generation
 - [ ] Portfolio optimization features
 - [ ] Advanced risk management modules
-
-## 📊 Client Delivery Features
-
-### Professional Reporting
-- **Institutional-grade tear sheets** with 40+ metrics and visualizations
-- **Benchmark comparison** (strategy vs buy-and-hold performance)
-- **Interactive HTML dashboards** with 6 comprehensive charts
-- **Separate candlestick charts** showing price action with trade entry/exit markers
-- **Advanced risk metrics** including Sharpe, Sortino, Calmar, VaR, CVaR
-- **Clean, professional design** optimized for client presentations
-- **Real-time browser preview** for immediate validation
-
-### Quick Tear Sheet Generation
-```python
-# Generate professional tear sheet (basic example)
-from src.reporting_demo import generate_basic_tearsheet
-import pandas as pd
-
-# Your strategy returns
-returns = pd.Series([...], index=dates)
-
-# Generate institutional report
-generate_basic_tearsheet(returns, "strategy_report.html")
-# Opens HTML with 40+ charts: equity curve, drawdown, monthly heatmap, risk metrics, etc.
-```
-
-**Note:** Full production implementation with automatic benchmark loading, batch processing, and advanced features available to clients.
-
-### Automated Chart Generation
-```python
-# Generate dashboard and candlestick chart for client
-from generate_professional_charts import create_professional_charts, create_candlestick_chart
-
-# Dashboard with metrics
-create_professional_charts(results, symbol, strategy_name, "dashboard.html")
-
-# Candlestick with trade signals
-create_candlestick_chart(results, symbol, strategy_name, ohlcv_data, "candlestick.html")
-```
-
-### Tear Sheet Components
-**Professional tear sheets include:**
-- Cumulative returns vs benchmark
-- Drawdown analysis with underwater plot
-- Monthly/yearly returns heatmap
-- Rolling Sharpe and volatility
-- Return distribution analysis
-- Risk metrics table (Sharpe, Sortino, Calmar, VaR, CVaR)
-- Win/loss statistics
-- Best/worst periods analysis
-- Trade duration analysis
-- Correlation matrix
-
-### Chart Components
-**Dashboard includes:**
-- Equity curve with capital growth
-- Win/Loss trade distribution
-- Cumulative P&L timeline
-- Win/Loss ratio pie chart
-- Drawdown analysis
-- Performance metrics table
-
-**Candlestick chart includes:**
-- OHLCV candlestick display
-- Green triangle markers for trade entries
-- Red triangle markers for trade exits
-- Interactive hover details
-- Date range selector

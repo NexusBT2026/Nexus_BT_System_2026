@@ -384,6 +384,9 @@ class SimpleProgressTracker:
         self.successful = 0
         self.failed = 0
         self.skipped = 0
+        self.strategies_passed = 0
+        self.strategies_failed_criteria = 0
+        self.final_selected = 0
         self.start_time = time.time()
         self.last_print = 0
         self.lock = Lock()

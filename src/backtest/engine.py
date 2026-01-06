@@ -264,23 +264,30 @@ class BacktestEngine:
         total_trades = len(trades)
         win_rate = wins / total_trades if total_trades > 0 else 0.0
         
-        # Calculate max_drawdown from cumulative returns
+        # Calculate max_drawdown from cumulative returns as percentage
         cumulative = returns.cumsum()
         running_max = cumulative.cummax()
         drawdown = (cumulative - running_max)
-        max_drawdown = abs(drawdown.min()) if len(drawdown) > 0 else 0.0
+        
+        # Convert to percentage based on initial capital
+        initial_capital = self.config.get('initial_capital', 10000)
+        max_drawdown_pct = (abs(drawdown.min()) / initial_capital * 100) if len(drawdown) > 0 and initial_capital > 0 else 0.0
         
         # Calculate profit_factor (gross profit / gross loss)
         gross_profit = returns[returns > 0].sum() if (returns > 0).any() else 0.0
         gross_loss = abs(returns[returns < 0].sum()) if (returns < 0).any() else 0.0
         profit_factor = gross_profit / gross_loss if gross_loss > 0 else 0.0
         
+        # Calculate average win and average loss
+        avg_win = returns[returns > 0].mean() if (returns > 0).any() else 0.0
+        avg_loss = returns[returns < 0].mean() if (returns < 0).any() else 0.0  # Keep negative
+        
         # Calculate Kelly Criterion: f = (p*b - q) / b where p=win_rate, q=loss_rate, b=avg_win/avg_loss
         if wins > 0 and (total_trades - wins) > 0:
-            avg_win = returns[returns > 0].mean()
-            avg_loss = abs(returns[returns < 0].mean())
-            if avg_loss > 0:
-                b = avg_win / avg_loss
+            avg_win_abs = returns[returns > 0].mean()
+            avg_loss_abs = abs(returns[returns < 0].mean())
+            if avg_loss_abs > 0:
+                b = avg_win_abs / avg_loss_abs
                 p = win_rate
                 q = 1 - win_rate
                 kelly = (p * b - q) / b
@@ -302,7 +309,9 @@ class BacktestEngine:
             'total_trades': total_trades,
             'winning_trades': wins,
             'losing_trades': total_trades - wins,
-            'max_drawdown': max_drawdown,
+            'avg_win': avg_win,
+            'avg_loss': avg_loss,
+            'max_drawdown': max_drawdown_pct,
             'profit_factor': profit_factor,
             'kelly': kelly,
             'sqn': sqn
