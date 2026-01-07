@@ -4,6 +4,8 @@ A comprehensive, modular backtesting framework inspired by Freqtrade, featuring 
 
 ## 🚀 Features
 
+<img src="Nexus.png" alt="Nexus Logo" width="200" align="right" style="margin-left: 20px;"/>
+
 ### Performance Optimized
 - **Async/await data fetching** with concurrent processing
 - **Multi-threaded optimization** with configurable workers

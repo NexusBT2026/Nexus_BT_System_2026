@@ -23,6 +23,8 @@ archived_data/
 
 # Client deliveries (Fiverr orders)
 client_deliveries/
+client_data/
+client_platform/
 
 # Private client order processing system (competitive advantage)
 nexus_private/
@@ -40,6 +42,7 @@ markets_info/
 READY_FOR_BUSINESS.md
 PRE_RELEASE_CHECKLIST.md
 GIT_PUSH_CHECKLIST.md
+PRODUCTION_TODO_MASTER.md
 
 # Proprietary archiving setup (competitive advantage)
 run_daily_archive.bat
