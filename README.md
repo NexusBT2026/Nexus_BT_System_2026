@@ -35,7 +35,10 @@ A comprehensive, modular backtesting framework inspired by Freqtrade, featuring 
 - **6 production-ready strategies** (RSI Divergence, MACD+EMA+ATR, Base Strategy - each with/without hold variants)
 - **17 strategy categories** with automatic classification (divergence, scalping, breakout, mean reversion, etc.)
 - **Exchange-specific preferences** - strategies matched to optimal exchanges
-- **Hyperopt/Optuna integration** for parameter optimization
+- **Three Backtest Engines**: 
+  - **Custom Engine** (`run_backtest`) - Original high-performance engine with async processing
+  - **Hyperopt/Optuna Integration** - Bayesian optimization for parameter tuning
+  - **backtesting.py Library** (`run_backtest_library`) - External library validation with professional metrics
 - **Comprehensive metrics**: Sharpe, Sortino, Calmar, Omega, Information Ratio, Tail Ratio
 - **Monte Carlo validation** and statistical testing
 
@@ -226,57 +229,107 @@ See [MANUAL.md](MANUAL.md) for detailed instructions.
 
 ### Command Line Options
 
+The Nexus system provides two main CLI entry points with different capabilities:
+
+#### Main Pipeline (`src/pipeline/pipeline_BT_unified_async.py`)
+
+```bash
+python src/pipeline/pipeline_BT_unified_async.py [mode] [options]
+```
+
+**Modes:**
+- `test` - Single strategy testing on 0G symbol with detailed output
+- (no mode) - Full pipeline: data fetching + optimization across all strategies/symbols
+
+**Options:**
+- `--optimizer {hyperopt,optuna,backtesting}` - Optimization algorithm (default: hyperopt)
+- `--trials TRIALS` - Number of optimization trials (default: 500)
+- `--scheduler` - Run reoptimization cycle instead of full pipeline
+- `--strategy STRATEGY` - Optimize only specified strategy (e.g., `rsi_divergence`)
+- `--force-rerun` - Force reoptimization even if already completed
+- `--force-refresh` - Force refresh all data files, ignoring staleness checks
+- `--test-async` - Test async fetch with minimal data
+- `--workers WORKERS` - Number of worker threads (default: 12)
+
+#### Quick Start Script (`run_bt.py`)
+
 ```bash
 python run_bt.py [options]
-
-Options:
-  --mode {full,test,scheduler}    Pipeline mode
-  --strategy STRATEGY            Specific strategy to optimize
-  --symbol SYMBOL                 Specific symbol to test
-  --exchange EXCHANGE             Specific exchange to use
-  --workers INT                   Number of worker threads
-  --trials INT                    Number of optimization trials
-  --force-refresh                 Force data refresh
-  --async-mode                    Use async processing
-  --scheduler                     Run reoptimization cycle
-  --optimizer {hyperopt,optuna}   Optimization algorithm
 ```
+
+**Options:**
+- `--optimizer {hyperopt,optuna,backtesting}` - Optimization algorithm (default: hyperopt)
+- `--trials TRIALS` - Number of trials (default: 300)
+- `--scheduler` - Resume mode for reoptimization
+- `--force-refresh` - Force refresh data
+- `--workers WORKERS` - Number of workers (default: 25)
 
 ### Common Workflows
 
-#### 1. First-Time Setup
+#### 1. First-Time Setup & Full Pipeline
 ```bash
-# Install dependencies
-pip install -r requirements.txt
+# Complete setup and first run (recommended)
+conda activate nexus
+python run_bt.py
 
-# Configure your API keys in config.json
-# Then run a test
-python run_bt.py --mode test
+# Full pipeline with custom settings
+python src/pipeline/pipeline_BT_unified_async.py --trials 1000 --workers 16 --optimizer hyperopt
 ```
 
-#### 2. Full Backtesting Pipeline
+#### 2. Strategy Testing & Validation
 ```bash
-# Fetch fresh data and run optimization
-python run_bt.py --mode full --workers 8 --trials 100
+# Test single strategy with hyperopt (fast, detailed output)
+python src/pipeline/pipeline_BT_unified_async.py test --strategy rsi_divergence --optimizer hyperopt --trials 100
 
-# Use async mode for better performance
-python run_bt.py --mode full --async-mode --workers 12
+# Test with optuna optimizer
+python src/pipeline/pipeline_BT_unified_async.py test --strategy macd_ema_atr --optimizer optuna --trials 200
+
+# Test with backtesting.py library
+python src/pipeline/pipeline_BT_unified_async.py test --strategy rsi_divergence --optimizer backtesting --trials 50
 ```
 
-#### 3. Strategy-Specific Optimization
+#### 3. Reoptimization & Updates
 ```bash
-# Optimize only RSI Divergence strategy
-python run_bt.py --mode full --strategy rsi_divergence --trials 200
+# Reoptimize existing strategies (scheduler mode)
+python run_bt.py --scheduler --trials 200 --optimizer hyperopt
 
-# Test on specific symbol
-python run_bt.py --mode test --strategy macd_ema_atr --symbol BTC
+# Force refresh all data and re-run
+python run_bt.py --force-refresh --trials 500
+
+# Reoptimize specific strategy only
+python src/pipeline/pipeline_BT_unified_async.py --scheduler --strategy rsi_divergence --force-rerun
 ```
 
-#### 4. Reoptimization Scheduler
+#### 4. Performance Optimization
 ```bash
-# Run periodic reoptimization
-python run_bt.py --scheduler --trials 50
+# High-performance run with many workers
+python run_bt.py --workers 32 --trials 1000 --optimizer optuna
+
+# Minimal test run for development
+python src/pipeline/pipeline_BT_unified_async.py test --trials 10 --optimizer hyperopt
 ```
+
+#### 5. Data Management
+```bash
+# Force refresh all market data
+python run_bt.py --force-refresh
+
+# Test async data fetching
+python src/pipeline/pipeline_BT_unified_async.py --test-async
+```
+
+### Optimizer Comparison
+
+| Optimizer | Best For | Speed | Exploration | Library |
+|-----------|----------|-------|-------------|---------|
+| **hyperopt** | General use, fast results | Fast | Good | Custom TPE |
+| **optuna** | Advanced optimization, large parameter spaces | Medium | Excellent | Optuna framework |
+| **backtesting** | External validation, professional metrics | Fast | Good | backtesting.py library |
+
+**Quick Optimizer Guide:**
+- **Start with hyperopt** for most use cases - fast and reliable
+- **Use optuna** when you have many parameters or need advanced optimization
+- **Use backtesting** for external validation and professional-grade metrics
 
 ### Results Analysis
 
@@ -361,6 +414,16 @@ class MyCustomStrategy(BaseStrategy):
         }
 ```
 
+### Backtest Engine Options
+
+Nexus supports three different backtest engines for comprehensive validation:
+
+1. **Custom Engine** (`--optimizer hyperopt`): Original high-performance engine with async processing and custom metrics
+2. **Optuna Engine** (`--optimizer optuna`): Bayesian optimization with advanced parameter search
+3. **backtesting.py Engine** (`--optimizer backtesting`): External library validation with professional-grade metrics and visualizations
+
+Each engine produces consistent results with standardized metrics for reliable strategy comparison.
+
 ## 📈 Performance Tips
 
 - **Use SSD storage** for data caching
@@ -397,7 +460,47 @@ pip install -r requirements.txt
 
 - Check the `src/utils/check_status.py` for current optimization status
 - Use `src/utils/analyze_results.py` for detailed result analysis
-- Run `python run_bt.py --help` for all available options
+- Run `python run_bt.py --help` or `python src/pipeline/pipeline_BT_unified_async.py --help` for all available options
+
+## 🐛 Troubleshooting
+
+### Common CLI Issues
+
+**"unrecognized arguments" error:**
+```bash
+# Wrong script - use the correct entry point
+python run_bt.py --scheduler  # ✅ Correct
+python src/pipeline/pipeline_BT_unified_async.py --scheduler  # ✅ Also correct
+
+# Wrong arguments - check available options
+python run_bt.py --help  # See valid options for run_bt.py
+python src/pipeline/pipeline_BT_unified_async.py --help  # See valid options for pipeline
+```
+
+**"backtesting optimizer not available":**
+```bash
+# Ensure backtesting.py is installed
+pip install backtesting
+# Or reinstall requirements
+pip install -r requirements.txt
+```
+
+**Optimization not starting:**
+- Ensure data exists in `data/` directory (run full pipeline first)
+- Check strategy name spelling in `--strategy` parameter
+- Verify symbol availability on configured exchanges
+- Use `--force-refresh` to update stale data
+
+**Memory/Performance issues:**
+- Reduce `--workers` count (try 4-8 instead of 32)
+- Use smaller `--trials` value (start with 50-100)
+- Process fewer strategies at once with `--strategy` parameter
+- Close other applications to free up RAM
+
+**Test mode shows "No result returned":**
+- The `base_strategy` is not optimizable - use a real strategy like `--strategy rsi_divergence`
+- Check that the strategy has proper `param_grid` defined
+- Ensure strategy file is in `src/strategy/` directory
 
 ## 💼 Professional Services
 

@@ -5,6 +5,13 @@ import logging
 from typing import Any, Dict, Callable
 import pandas as pd
 
+try:
+    from backtesting import Backtest, Strategy
+    BACKTESTING_AVAILABLE = True
+except ImportError:
+    BACKTESTING_AVAILABLE = False
+    logging.warning("backtesting library not available. Install with: pip install backtesting")
+
 class BacktestEngine:
     def run_optuna(self, param_grid: Dict[str, Any], n_trials: int = 100) -> Dict[str, Any]:
         """
@@ -92,6 +99,157 @@ class BacktestEngine:
             'metrics': metrics,
             'parameters': self.config,
             'trades': trades.to_dict('records') if trades is not None and hasattr(trades, 'to_dict') else []
+        }
+        return results
+
+    def run_backtest_engine(self) -> Dict[str, Any]:
+        logging.info(f"Running backtest for {self.symbol} with {self.strategy_cls.__name__} using engine method")
+        # Generic backtest logic for any strategy class
+        # 1. Generate signals
+        signals = self.strategy.generate_signals(self.data)
+        # 2. Simulate trades
+        trades = self.strategy.simulate_trades(signals, self.data)
+        # 3. Calculate metrics (this will filter out end_of_data trades internally)
+        metrics = self._calculate_metrics(trades)
+        
+        # Keep ALL trades in results (including end_of_data) for analysis
+        # But metrics are calculated only on complete strategy-driven trades
+        results = {
+            'symbol': self.symbol,
+            'strategy': self.strategy_cls.__name__,
+            'metrics': metrics,
+            'parameters': self.config,
+            'trades': trades.to_dict('records') if trades is not None and hasattr(trades, 'to_dict') else []
+        }
+        return results
+
+    def run_backtest_library(self) -> Dict[str, Any]:
+        """
+        Run backtest using backtesting.py library.
+        This provides an alternative backtest method using an external library.
+        """
+        if not BACKTESTING_AVAILABLE:
+            logging.error("backtesting library not available. Install with: pip install backtesting")
+            return self.run_backtest()  # Fallback to our custom method
+
+        logging.info(f"Running backtesting.py backtest for {self.symbol} with {self.strategy_cls.__name__}")
+
+        # Create a backtesting.py compatible strategy class dynamically
+        strategy_cls = self.strategy_cls
+        config = self.config
+
+        class BacktestingPyStrategy(Strategy):
+            def init(self):
+                # Store reference to our strategy
+                self.nexus_strategy = strategy_cls(config)
+                # Pre-calculate indicators and signals using backtesting.py data format
+                # Convert backtesting.py data to DataFrame
+                df = pd.DataFrame({
+                    'open': self.data.Open,
+                    'high': self.data.High,
+                    'low': self.data.Low,
+                    'close': self.data.Close,
+                    'volume': self.data.Volume
+                })
+                
+                # Generate signals using the strategy's generate_signals method
+                signals_df = self.nexus_strategy.generate_signals(df)
+                
+                # Convert signals to a series indexed by position
+                self.signals = pd.Series(0, index=df.index)
+                if isinstance(signals_df, pd.DataFrame) and 'signal' in signals_df.columns:
+                    # Handle dataframe interface (signal column with 1=buy, -1=sell, 0=hold)
+                    for i, signal in enumerate(signals_df['signal']):
+                        self.signals.iloc[i] = signal
+                elif isinstance(signals_df, list):
+                    # Handle list of dictionaries interface
+                    for signal_dict in signals_df:
+                        idx = signal_dict['index']
+                        action = signal_dict.get('action', 'hold')
+                        if action == 'buy':
+                            self.signals.iloc[idx] = 1
+                        elif action == 'sell':
+                            self.signals.iloc[idx] = -1
+                        # hold = 0 (default)
+
+            def next(self):
+                # Get current signal from pre-calculated signals
+                current_idx = len(self.data) - 1
+                if current_idx < len(self.signals):
+                    signal = self.signals.iloc[current_idx]
+
+                    # Execute trades based on signal
+                    if signal == 1 and not self.position:
+                        # Buy signal
+                        self.buy()
+                    elif signal == -1 and self.position:
+                        # Sell signal
+                        self.position.close()
+
+        # Prepare data for backtesting.py (ensure proper OHLCV format and DateTimeIndex)
+        df = self.data.copy()
+        required_cols = ['Open', 'High', 'Low', 'Close', 'Volume']
+        if not all(col in df.columns for col in required_cols):
+            # Convert from lowercase to proper case
+            col_mapping = {
+                'open': 'Open',
+                'high': 'High',
+                'low': 'Low',
+                'close': 'Close',
+                'volume': 'Volume'
+            }
+            df = df.rename(columns=col_mapping)
+
+        # Ensure we have a DateTimeIndex
+        if not isinstance(df.index, pd.DatetimeIndex):
+            df.index = pd.date_range(start='2020-01-01', periods=len(df), freq='D')
+
+        # Run backtest
+        bt = Backtest(df, BacktestingPyStrategy, cash=self.config.get('initial_capital', 10000),
+                     commission=self.config.get('commission', 0.001))
+
+        # Execute backtest
+        result = bt.run()
+
+        # Convert backtesting.py results to our format
+        trades = []
+        if hasattr(result, '_trades') and result._trades is not None:
+            for trade in result._trades.itertuples():
+                trades.append({
+                    'entry_time': getattr(trade, 'EntryTime', None),
+                    'exit_time': getattr(trade, 'ExitTime', None),
+                    'entry_price': getattr(trade, 'EntryPrice', 0),
+                    'exit_price': getattr(trade, 'ExitPrice', 0),
+                    'pnl': getattr(trade, 'PnL', 0),
+                    'size': getattr(trade, 'Size', 0),
+                    'exit_reason': 'signal'  # backtesting.py doesn't track exit reasons like we do
+                })
+
+        # Convert metrics to our format, handling NaN values
+        def safe_get(result_dict, key, default=0.0):
+            val = result_dict.get(key, default)
+            return default if pd.isna(val) else val
+
+        metrics = {
+            'pnl': safe_get(result, 'Return [%]', 0.0) * self.config.get('initial_capital', 10000) / 100,
+            'sharpe': safe_get(result, 'Sharpe Ratio', 0.0),
+            'win_rate': safe_get(result, 'Win Rate [%]', 0.0) / 100,
+            'total_trades': int(safe_get(result, '# Trades', 0)),
+            'winning_trades': int(safe_get(result, '# Trades', 0) * safe_get(result, 'Win Rate [%]', 0.0) / 100),
+            'losing_trades': int(safe_get(result, '# Trades', 0) * (1 - safe_get(result, 'Win Rate [%]', 0.0) / 100)),
+            'max_drawdown': safe_get(result, 'Max. Drawdown [%]', 0.0),
+            'profit_factor': safe_get(result, 'Profit Factor', 0.0),
+            'kelly': 0.0,  # backtesting.py doesn't calculate Kelly
+            'sqn': 0.0     # backtesting.py doesn't calculate SQN
+        }
+
+        # Return in our standard format
+        results = {
+            'symbol': self.symbol,
+            'strategy': self.strategy_cls.__name__,
+            'metrics': metrics,
+            'parameters': self.config,
+            'trades': trades
         }
         return results
 
@@ -418,6 +576,7 @@ class BacktestEngine:
 # param_grid = {...}
 # engine = BacktestEngine(RSIDivergenceStrategy, 'BTCUSDT', config, data)
 # backtest_result = engine.run_backtest()
+# backtest_library_result = engine.run_backtest_library()  # Using backtesting.py library
 # hyperopt_result = engine.run_hyperopt(param_grid)
 #
 # Note: Each strategy must implement generate_signals(data) and simulate_trades(data, signals)

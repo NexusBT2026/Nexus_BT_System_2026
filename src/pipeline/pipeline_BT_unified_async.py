@@ -1657,7 +1657,19 @@ def optimize_strategy_task(task):
         engine = BacktestEngine(strategy_class, symbol, {}, df)
 
         # Run optimizer based on user choice with configurable trials
-        if optimizer == 'optuna':
+        if optimizer == 'backtesting':
+            # Use backtesting.py library for single backtest (no optimization)
+            logger.info(f"Running single backtest with backtesting.py library for {strategy_name}")
+            best_result = engine.run_backtest_library()
+            # Format as optimization result
+            best_result = {
+                'parameters': {},
+                'score': best_result.get('metrics', {}).get('sharpe', 0),
+                'metrics': best_result.get('metrics', {}),
+                'trials_completed': 1,
+                'trades': best_result.get('trades', [])
+            }
+        elif optimizer == 'optuna':
             best_result = engine.run_optuna(param_grid, n_trials=n_trials)
         else:
             best_result = engine.run_hyperopt(param_grid, max_evals=n_trials)
@@ -2166,14 +2178,14 @@ def save_optimization_analysis(analysis, output_dir):
     
     logger.info(f"Analysis saved to {output_dir}")
 
-def test_single_symbol(strategy_name=None):
+def test_single_symbol(strategy_name=None, optimizer='hyperopt', trials=500):
     """Test the pipeline with a single symbol for validation"""
     import pandas as pd
     import os
     
     # Test symbol and timeframe
-    test_symbol = "BTC"
-    test_timeframe = "12h"
+    test_symbol = "0G"
+    test_timeframe = "15m"
     
     # Use dynamic strategy loading
     from src.strategy import strategies
@@ -2230,6 +2242,7 @@ def test_single_symbol(strategy_name=None):
                 "rsi_divergence": strategies.get('rsi_divergence'),
                 "macd_ema_atr_strategy": strategies.get('macd_ema_atr_strategy'),
                 "test_strategy": strategies.get('test_strategy'),
+                "base_strategy": strategies.get('base_strategy'),
             }.items() if v is not None
         }
         
@@ -2246,9 +2259,11 @@ def test_single_symbol(strategy_name=None):
             strategy = strategy_class({})
             print(f"   ✓ Strategy initialized successfully")
             
-            # Test param_grid
-            print(f"2. Testing param_grid...")
-            if hasattr(strategy, 'param_grid'):
+            # Test param_grid (skip for backtesting optimizer)
+            print(f"2. Testing param_grid... (optimizer={optimizer})")
+            if optimizer == 'backtesting':
+                print(f"   ✓ Skipping param_grid check for backtesting optimizer")
+            elif hasattr(strategy, 'param_grid'):
                 # Get param_grid (call it if it's a method)
                 param_grid_attr = strategy.param_grid() if callable(strategy.param_grid) else strategy.param_grid
                 
@@ -2259,27 +2274,31 @@ def test_single_symbol(strategy_name=None):
                 else:
                     print(f"   ✗ ERROR: param_grid is not a dictionary (type: {type(param_grid_attr)})!")
                     return
-            else:
+            elif optimizer != 'backtesting':
                 print(f"   ✗ ERROR: No param_grid found!")
                 return
             
-            # Test simulate_trades method
+            # Test simulate_trades method (skip for backtesting optimizer)
             print(f"3. Testing simulate_trades method...")
-            if hasattr(strategy, 'simulate_trades'):
+            if optimizer == 'backtesting':
+                print(f"   ✓ Skipping simulate_trades check for backtesting optimizer")
+            elif hasattr(strategy, 'simulate_trades'):
                 print(f"   ✓ simulate_trades method found")
             else:
                 print(f"   ✗ ERROR: No simulate_trades method found!")
                 return
             
             # Test actual optimization
-            print(f"4. Testing full optimization with 1000 trials...")
+            print(f"4. Testing optimization with {trials} trials using {optimizer}...")
             task = {
                 'symbol': test_symbol,
                 'timeframe': test_timeframe,
                 'strategy_name': strategy_name,
                 'strategy_class': strategy_class,
                 'data': df.copy(),
-                'csv_file': csv_file
+                'csv_file': csv_file,
+                'optimizer': optimizer,
+                'n_trials': trials
             }
             
             print(f"   Starting optimization...")
@@ -2411,7 +2430,7 @@ async def main_async():
     import argparse
 
     parser = argparse.ArgumentParser(description="Async Unified Pipeline Orchestrator")
-    parser.add_argument('--optimizer', choices=['hyperopt', 'optuna'], default='hyperopt', help='Choose optimizer: hyperopt or optuna (default: hyperopt)')
+    parser.add_argument('--optimizer', choices=['hyperopt', 'optuna', 'backtesting'], default='hyperopt', help='Choose optimizer: hyperopt or optuna (default: hyperopt)')
     parser.add_argument('--trials', type=int, default=500, help='Number of optimization trials (default: 500)')
     parser.add_argument('--scheduler', action='store_true', help='Run scheduler (reoptimization cycle) instead of full pipeline')
     parser.add_argument('--strategy', type=str, default=None, help='Specify a single strategy to reoptimize (by name, e.g. macd_ema_atr)')
@@ -2422,7 +2441,7 @@ async def main_async():
     args = parser.parse_args()
 
     if args.mode == 'test':
-        test_single_symbol()
+        test_single_symbol(optimizer=args.optimizer, trials=args.trials)
     elif args.scheduler:
         print("\n=== Running ASYNC Scheduler (Reoptimization Cycle) ===")
         # Use async symbol discovery
@@ -2529,7 +2548,7 @@ if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser(description="Unified Pipeline Orchestrator")
-    parser.add_argument('--optimizer', choices=['hyperopt', 'optuna'], default='hyperopt', help='Choose optimizer: hyperopt or optuna (default: hyperopt)')
+    parser.add_argument('--optimizer', choices=['hyperopt', 'optuna', 'backtesting'], default='hyperopt', help='Choose optimizer: hyperopt or optuna (default: hyperopt)')
     parser.add_argument('--trials', type=int, default=500, help='Number of optimization trials (default: 500)')
     parser.add_argument('--scheduler', action='store_true', help='Run scheduler (reoptimization cycle) instead of full pipeline')
     parser.add_argument('--strategy', type=str, default=None, help='Specify a single strategy to reoptimize (by name, e.g. macd_ema_atr)')
@@ -2551,7 +2570,7 @@ if __name__ == "__main__":
         print("🚀 Running ASYNC Pipeline for maximum performance...")
         asyncio.run(main_async())
     elif args.mode == 'test':
-        test_single_symbol(strategy_name=args.strategy)
+        test_single_symbol(strategy_name=args.strategy, optimizer=args.optimizer, trials=args.trials)
     elif args.scheduler:
         print("\n=== Running Scheduler (Reoptimization Cycle) ===")
         symbols = discover_symbols()

@@ -65,6 +65,9 @@ schedule
 pydantic
 rope
 
+# Backtesting libraries
+backtesting  # Third backtest method using backtesting.py library
+
 # Optional / dev / test
 #yarg==0.1.9
 #ipython==8.12.3

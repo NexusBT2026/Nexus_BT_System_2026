@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/SemVer
 ## [Unreleased]
 
 ### Added (January 2026)
+- **Three Backtest Engines**: 
+  - Custom high-performance engine (original)
+  - Hyperopt/Optuna Bayesian optimization
+  - backtesting.py library integration for external validation
 - **Real-Time Optimization Dashboard** with Rich UI library:
   - Live progress bars with ETA and time elapsed
   - System resource monitoring (CPU, memory)

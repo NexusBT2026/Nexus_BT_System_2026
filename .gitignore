@@ -25,12 +25,16 @@ archived_data/
 client_deliveries/
 client_data/
 client_platform/
+Photos/
+tools/
 
 # Private client order processing system (competitive advantage)
 nexus_private/
 
 # Test files building the project enhancements
 testing_new_features/
+test_backtesting.py
+test_all_engines.py
 
 # Fiverr personal prep files (screenshots, demos, marketing)
 fiverr_personal/

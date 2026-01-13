@@ -243,7 +243,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Nexus Backtesting System')
     parser.add_argument('--workers', type=int, default=25, help='Number of workers')
     parser.add_argument('--trials', type=int, default=300, help='Number of trials')
-    parser.add_argument('--optimizer', choices=['hyperopt', 'optuna'], default='hyperopt')
+    parser.add_argument('--optimizer', choices=['hyperopt', 'optuna', 'backtesting'], default='hyperopt')
     parser.add_argument('--scheduler', action='store_true', help='Resume mode')
     parser.add_argument('--force-refresh', action='store_true', help='Force refresh data')
     
