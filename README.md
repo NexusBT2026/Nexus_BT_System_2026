@@ -209,6 +209,8 @@ class MyStrategy(BaseStrategy):
 
 **That's it!** The system automatically discovers, categorizes, and optimizes your strategy.
 
+```python
+
 See [MANUAL.md](MANUAL.md) for detailed instructions.
 │   │   └── symbol_intersection.py
 │   ├── exchange/
