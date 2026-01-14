@@ -82,3 +82,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/SemVer
 - Basic optimization (random search only)
 - No interactive visualization
 - Manual strategy registration required
+
+### Notes
+- 2026-01-14: Unignored `src/data` and added data source modules to the repository. If you previously saw `src/data` missing, run `git pull` to retrieve the files.
