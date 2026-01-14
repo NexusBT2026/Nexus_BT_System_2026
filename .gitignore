@@ -48,6 +48,7 @@ READY_FOR_BUSINESS.md
 PRE_RELEASE_CHECKLIST.md
 GIT_PUSH_CHECKLIST.md
 PRODUCTION_TODO_MASTER.md
+exchange_integration_test_flow.md
 
 # Proprietary archiving setup (competitive advantage)
 run_daily_archive.bat
