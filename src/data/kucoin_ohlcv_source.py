@@ -24,7 +24,7 @@ from src.data.api_rate_monitor import record_api_call
 
 logger = setup_logger('kucoin_ohlcv_source', json_logs=True)
 
-class KuCoinOHLCVDataSource:
+class KucoinOHLCVDataSource:
     def __init__(self):
         self.base_url = "https://api.kucoin.com"
         # KuCoin: Conservative rate limiting (adjust based on VIP level)
