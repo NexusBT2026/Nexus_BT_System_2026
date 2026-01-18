@@ -425,8 +425,8 @@ def main(results_dir):
         print("✓ Saved: correlation_matrix.html")
     
     # 3D performance surface
-    if {'win_rate', 'sharpe', 'net_profit'}.issubset(abs_params.columns):
-        fig = create_3d_performance_surface(abs_params, 'win_rate', 'sharpe', 'net_profit')
+    if {'win_rate', 'sharpe', 'return_pct'}.issubset(abs_params.columns):
+        fig = create_3d_performance_surface(abs_params, 'win_rate', 'sharpe', 'return_pct')
         fig.write_html(os.path.join(results_dir, 'performance_3d.html'))
         print("✓ Saved: performance_3d.html")
     

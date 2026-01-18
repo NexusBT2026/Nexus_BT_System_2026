@@ -10,7 +10,16 @@ import time
 from datetime import datetime, timedelta
 from typing import Optional
 import json
-from src.exchange.config import load_config
+try:
+    from src.exchange.config import load_config
+except Exception:
+    # Fallback: simple loader from repo config.json
+    def load_config(config_path: str = 'config.json'):
+        import json, os
+        if os.path.exists(config_path):
+            with open(config_path, 'r') as f:
+                return json.load(f)
+        return {}
 import os
 
 logger = logging.getLogger(__name__)

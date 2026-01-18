@@ -28,6 +28,7 @@ client_data/
 client_platform/
 Photos/
 tools/
+client_delivery_template/generate_professional_charts.py
 
 # Private client order processing system (competitive advantage)
 nexus_private/
@@ -36,6 +37,7 @@ nexus_private/
 testing_new_features/
 test_backtesting.py
 test_all_engines.py
+create_exchange_test_scripts.py
 
 # Fiverr personal prep files (screenshots, demos, marketing)
 fiverr_personal/

@@ -1,144 +1,184 @@
 """
-Kucoin OHLCV Data Source
-Provides clean interface for fetching Kucoin Futures OHLCV data using CCXT
+KuCoin OHLCV Data Source
+Provides clean interface for fetching KuCoin Spot OHLCV data using REST API
 """
 
-import logging
-import pandas as pd
-import ccxt
-import time
-from datetime import datetime, timedelta
-from typing import Optional
-import json
-from src.exchange.config import load_config
 import os
+import sys
+import requests
+import pandas as pd
+import datetime
+import time
+from typing import Optional
 
-logger = logging.getLogger(__name__)
+# Add project root to path for imports
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+sys.path.insert(0, project_root)
 
+from src.exchange.logging_utils import setup_logger
+from src.exchange.retry import retry_on_exception
 
-class KucoinOHLCVDataSource:
-    """Fetches OHLCV data from Kucoin USDT-M Futures using CCXT"""
-    
-    def __init__(self, api_key: Optional[str] = None, api_secret: Optional[str] = None, password: Optional[str] = None):
-        """Initialize Kucoin CCXT client for futures"""
-        # Load credentials from parameters, env, or central config loader
-        self.api_key = api_key or os.environ.get('KUCOIN_API_KEY')
-        self.api_secret = api_secret or os.environ.get('KUCOIN_API_SECRET')
-        self.password = password or os.environ.get('KUCOIN_API_PASSWORD')
-        if not self.api_key or not self.api_secret:
-            try:
-                config = load_config()
-                self.api_key = self.api_key or config.get('kucoin_api_key')
-                self.api_secret = self.api_secret or config.get('kucoin_api_secret')
-                self.password = self.password or config.get('kucoin_api_password')
-            except Exception as e:
-                logger.warning(f'Could not load Kucoin API credentials from central config loader: {e}')
-        config = {
-            'apiKey': self.api_key or '',
-            'secret': self.api_secret or '',
-            'password': self.password or '',
-            'enableRateLimit': True,
-            'options': {
-                'defaultType': 'swap',  # USDT-M perpetual swaps
-            },
-        }
-        self.exchange = ccxt.kucoinfutures(config)  # type: ignore
-        logger.info("Initialized KucoinOHLCVDataSource for USDT-M futures")
-    
-    def fetch_historical_data(
-        self,
-        symbol: str,
-        timeframe: str = '1h',
-        limit: int = 1000,
-        since: Optional[int] = None
-    ) -> pd.DataFrame:
+# Enhanced TokenBucket Rate Limiting
+from src.utils.token_bucket import TokenBucket
+from src.data.api_rate_monitor import record_api_call
+
+logger = setup_logger('kucoin_ohlcv_source', json_logs=True)
+
+class KuCoinOHLCVDataSource:
+    def __init__(self):
+        self.base_url = "https://api.kucoin.com"
+        # KuCoin: Conservative rate limiting (adjust based on VIP level)
+        self.kucoin_bucket = TokenBucket(100, 5.0, "KuCoin_OHLCV", enable_caching=False, cache_ttl=60)
+
+    @retry_on_exception()
+    def fetch_historical_data(self, symbol: str, timeframe: str, limit: int = 500, retries: int = 3) -> pd.DataFrame:
         """
-        Fetch historical OHLCV data from Kucoin futures
-        
+        Fetch historical OHLCV data from KuCoin REST API
+
         Args:
-            symbol: Trading pair (e.g., 'BTC/USDT:USDT' or 'BTC-USDT')
-            timeframe: Timeframe ('1m', '5m', '15m', '1h', '4h', etc.)
-            limit: Number of candles to fetch (max 1500 for Kucoin)
-            since: Timestamp in milliseconds (optional)
-        
+            symbol: Trading pair in KuCoin format (e.g., 'BTC-USDT')
+            timeframe: Timeframe string (e.g., '1m', '5m', '1h', '1d')
+            limit: Number of candles to fetch (max ~1500)
+            retries: Number of retry attempts
+
         Returns:
-            DataFrame with columns: timestamp, open, high, low, close, volume
+            DataFrame with OHLCV data
         """
-        try:
-            # Convert symbol format if needed (BTC-USDT -> BTC/USDT:USDT for perpetuals)
-            if '/' not in symbol:
-                # Strip 'M' suffix if present (KuCoin WebSocket format)
-                if symbol.endswith('M'):
-                    symbol = symbol[:-1]
-                if '-USDT' in symbol:
-                    base = symbol.replace('-USDT', '')
-                    symbol = f"{base}/USDT:USDT"
-                elif symbol.endswith('USDT'):
-                    base = symbol[:-4]  # Remove 'USDT'
-                    symbol = f"{base}/USDT:USDT"
-                else:
-                    symbol = f"{symbol}/USDT:USDT"
-            
-            logger.debug(f"Fetching Kucoin data for {symbol} ({timeframe}), limit={limit}")
-            
-            # Fetch OHLCV data using CCXT
-            ohlcv = self.exchange.fetch_ohlcv(
-                symbol=symbol,
-                timeframe=timeframe,
-                limit=min(limit, 1500),  # Kucoin max is 1500
-                since=since
-            )
-            
-            if not ohlcv:
-                logger.warning(f"No OHLCV data returned for {symbol} ({timeframe})")
-                return pd.DataFrame(columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-            
-            # Convert to DataFrame
-            df = pd.DataFrame(
-                ohlcv,
-                columns=['timestamp', 'open', 'high', 'low', 'close', 'volume']
-            )
-            
-            # Convert timestamp from milliseconds to datetime
-            df['timestamp'] = pd.to_datetime(df['timestamp'], unit='ms')
-            
-            # Ensure numeric types
-            for col in ['open', 'high', 'low', 'close', 'volume']:
-                df[col] = pd.to_numeric(df[col], errors='coerce')
-            
-            # Remove any rows with NaN values
-            df = df.dropna()
-            
-            logger.info(f"Successfully fetched {len(df)} candles for {symbol} ({timeframe})")
-            return df
-            
-        except Exception as e:
-            logger.error(f"Error fetching Kucoin data for {symbol} ({timeframe}): {e}")
-            return pd.DataFrame(columns=['timestamp', 'open', 'high', 'low', 'close', 'volume'])
-    
+        # Rate limiting
+        wait = self.kucoin_bucket.wait_time()
+        if wait > 0:
+            time.sleep(wait)
+        if not self.kucoin_bucket.consume():
+            logger.warning("Rate limit prevented KuCoin API call", extra={"symbol": symbol, "timeframe": timeframe})
+            return pd.DataFrame()
+
+        # Map timeframe to KuCoin format
+        timeframe_mapping = {
+            '1m': '1min', '3m': '3min', '5m': '5min', '15m': '15min', '30m': '30min',
+            '1h': '1hour', '2h': '2hour', '4h': '4hour', '6h': '6hour', '8h': '8hour',
+            '12h': '12hour', '1d': '1day', '3d': '3day', '1w': '1week'
+        }
+        kucoin_timeframe = timeframe_mapping.get(timeframe, timeframe)
+
+        # Calculate time range (KuCoin returns data in reverse chronological order)
+        end_time = datetime.datetime.now()
+        # Estimate start time based on limit and timeframe
+        if 'min' in kucoin_timeframe:
+            minutes = int(kucoin_timeframe.replace('min', ''))
+            start_time = end_time - datetime.timedelta(minutes=minutes * limit)
+        elif 'hour' in kucoin_timeframe:
+            hours = int(kucoin_timeframe.replace('hour', ''))
+            start_time = end_time - datetime.timedelta(hours=hours * limit)
+        elif 'day' in kucoin_timeframe:
+            days = int(kucoin_timeframe.replace('day', ''))
+            start_time = end_time - datetime.timedelta(days=days * limit)
+        elif 'week' in kucoin_timeframe:
+            weeks = int(kucoin_timeframe.replace('week', ''))
+            start_time = end_time - datetime.timedelta(weeks=weeks * limit)
+        else:
+            start_time = end_time - datetime.timedelta(days=30)  # fallback
+
+        start_timestamp = int(start_time.timestamp())
+        end_timestamp = int(end_time.timestamp())
+
+        url = f"{self.base_url}/api/v1/market/candles"
+        params = {
+            'symbol': symbol,
+            'type': kucoin_timeframe,
+            'startAt': start_timestamp,
+            'endAt': end_timestamp
+        }
+
+        logger.info(f"Fetching KuCoin historical data: {symbol} {timeframe} ({limit} candles)",
+                   extra={"symbol": symbol, "timeframe": timeframe, "url": url, "params": params})
+
+        success = False
+        for attempt in range(retries + 1):
+            try:
+                start = time.time()
+                response = requests.get(url, params=params, timeout=30)
+                response.raise_for_status()
+
+                data = response.json()
+                if data.get('code') != '200000':
+                    logger.error(f"KuCoin API error: {data}", extra={"symbol": symbol, "timeframe": timeframe})
+                    return pd.DataFrame()
+
+                candles = data.get('data', [])
+                if not candles:
+                    logger.warning(f"No candle data returned from KuCoin", extra={"symbol": symbol, "timeframe": timeframe})
+                    return pd.DataFrame()
+
+                # Convert to DataFrame
+                # KuCoin returns: [timestamp, open, close, high, low, volume, turnover]
+                df_data = []
+                for candle in candles:
+                    try:
+                        timestamp = pd.to_datetime(int(candle[0]), unit='s', utc=True)
+                        open_price = float(candle[1])
+                        close_price = float(candle[2])
+                        high_price = float(candle[3])
+                        low_price = float(candle[4])
+                        volume = float(candle[5])
+
+                        df_data.append({
+                            'timestamp': timestamp,
+                            'open': open_price,
+                            'high': high_price,
+                            'low': low_price,
+                            'close': close_price,
+                            'volume': volume
+                        })
+                    except (ValueError, IndexError) as e:
+                        logger.warning(f"Skipping malformed candle data: {candle}", extra={"error": str(e)})
+                        continue
+
+                if not df_data:
+                    logger.warning(f"No valid candle data after parsing", extra={"symbol": symbol, "timeframe": timeframe})
+                    return pd.DataFrame()
+
+                df = pd.DataFrame(df_data)
+                df.set_index('timestamp', inplace=True)
+                df = df.sort_index()  # Ensure chronological order
+
+                # Record API call
+                record_api_call('kucoin', 'candles')
+
+                logger.info(f"Successfully fetched {len(df)} candles from KuCoin",
+                           extra={"symbol": symbol, "timeframe": timeframe, "count": len(df)})
+
+                success = True
+                return df
+
+            except requests.exceptions.RequestException as e:
+                logger.warning(f"KuCoin API request failed (attempt {attempt + 1}/{retries + 1}): {e}",
+                              extra={"symbol": symbol, "timeframe": timeframe, "attempt": attempt + 1})
+                if attempt < retries:
+                    time.sleep(2 ** attempt)  # Exponential backoff
+                continue
+            except Exception as e:
+                logger.error(f"Unexpected error fetching KuCoin data: {e}",
+                            extra={"symbol": symbol, "timeframe": timeframe, "error": str(e)})
+                if attempt < retries:
+                    time.sleep(1)
+                continue
+
+        # Record failed API call
+        record_api_call('kucoin', 'candles')
+        logger.error(f"Failed to fetch KuCoin data after {retries + 1} attempts",
+                    extra={"symbol": symbol, "timeframe": timeframe})
+        return pd.DataFrame()
+
     def get_available_timeframes(self) -> list:
-        """Get list of supported timeframes for Kucoin"""
-        return ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '1w']
-    
+        """Get list of supported timeframes for KuCoin"""
+        return ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w']
+
     def validate_symbol(self, symbol: str) -> bool:
-        """Check if symbol is available on Kucoin futures"""
+        """Check if symbol is available on KuCoin spot"""
         try:
-            # Convert symbol format if needed (same logic as fetch_historical_data)
-            if '/' not in symbol:
-                # Strip 'M' suffix if present (KuCoin WebSocket format)
-                if symbol.endswith('M'):
-                    symbol = symbol[:-1]
-                if '-USDT' in symbol:
-                    base = symbol.replace('-USDT', '')
-                    symbol = f"{base}/USDT:USDT"
-                elif symbol.endswith('USDT'):
-                    base = symbol[:-4]  # Remove 'USDT'
-                    symbol = f"{base}/USDT:USDT"
-                else:
-                    symbol = f"{symbol}/USDT:USDT"
-            
-            markets = self.exchange.load_markets()
-            return symbol in markets and markets[symbol].get('swap', False)
+            # For now, just check if it's a valid format
+            # Could extend to check against KuCoin's symbol list
+            return '-' in symbol and len(symbol.split('-')) == 2
         except Exception as e:
             logger.error(f"Error validating symbol {symbol}: {e}")
             return False
