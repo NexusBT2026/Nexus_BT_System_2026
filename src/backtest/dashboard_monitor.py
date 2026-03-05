@@ -373,6 +373,16 @@ class BacktestDashboard:
         self.console.print("\n")
         self.console.print(strategy_table)
 
+    def set_final_selected(self, count: int):
+        """
+        Set the count of final selected strategies after filtering.
+        
+        Args:
+            count: Number of strategies that passed final selection
+        """
+        with self.lock:
+            self.final_selected = count
+
 
 # Fallback simple progress tracker if rich not available
 class SimpleProgressTracker:
