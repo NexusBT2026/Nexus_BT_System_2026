@@ -30,7 +30,7 @@ logging.basicConfig(level=logging.ERROR, format='%(message)s')
 
 # ── BTC config ────────────────────────────────────────────────────────────────
 TARGET_SYMBOL     = 'BTC'
-TARGET_TIMEFRAMES = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h']
+TARGET_TIMEFRAMES = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d']
 # ─────────────────────────────────────────────────────────────────────────────
 
 @contextmanager
@@ -122,14 +122,16 @@ async def main():
             console = Console()
             console.print("[cyan]Fetching BTC historical OHLCV data...[/cyan]")
             with silent_operation():
-                await fetch_ohlcv_data_async(btc_symbols, timeframes=TARGET_TIMEFRAMES,
-                                             data_dir=data_dir, force_refresh=force_refresh)
+                if force_refresh:
+                    await fetch_ohlcv_data_async(btc_symbols, timeframes=TARGET_TIMEFRAMES,
+                                                 data_dir=data_dir, force_refresh=True)
             console.print("[green]Data fetch complete[/green]\n")
         except ImportError:
             print("Fetching BTC historical OHLCV data...")
             with silent_operation():
-                await fetch_ohlcv_data_async(btc_symbols, timeframes=TARGET_TIMEFRAMES,
-                                             data_dir=data_dir, force_refresh=force_refresh)
+                if force_refresh:
+                    await fetch_ohlcv_data_async(btc_symbols, timeframes=TARGET_TIMEFRAMES,
+                                                 data_dir=data_dir, force_refresh=True)
             print("Data fetch complete\n")
 
         # ── Step 2: Discover which BTC CSVs are available after fetch ────────────
