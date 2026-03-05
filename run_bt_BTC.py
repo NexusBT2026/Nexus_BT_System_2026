@@ -15,9 +15,11 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'src'))
 from src.pipeline.pipeline_BT_unified_async import (
     optimize_strategy_task,
     save_individual_result,
+    fetch_ohlcv_data_async,
     NUMEXPR_MAX_THREADS
 )
 from src.backtest.dashboard_monitor import show_initialization_screen, create_dashboard
+from concurrent.futures import ProcessPoolExecutor, as_completed
 import logging
 import sys
 import os
@@ -27,8 +29,8 @@ from contextlib import contextmanager
 logging.basicConfig(level=logging.ERROR, format='%(message)s')
 
 # ── BTC config ────────────────────────────────────────────────────────────────
-TARGET_SYMBOL    = 'BTC'
-TARGET_TIMEFRAME = '15m'   # change to match your CSV e.g. '15m'
+TARGET_SYMBOL     = 'BTC'
+TARGET_TIMEFRAMES = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h']
 # ─────────────────────────────────────────────────────────────────────────────
 
 @contextmanager
@@ -80,96 +82,101 @@ async def main():
     optimizer = getattr(cli_args, 'optimizer', 'hyperopt')
     scheduler_mode = getattr(cli_args, 'scheduler', False)
     force_refresh = getattr(cli_args, 'force_refresh', False)
-    
+
     # Suppress noisy logs for clean client display
     suppress_noisy_logs()
-    
+
     try:
         import pandas as pd
+        import glob
 
-        # Step 1: locate BTC CSV
         data_dir = os.path.join(os.path.dirname(__file__), 'data')
-        csv_file = os.path.join(data_dir, f'{TARGET_SYMBOL}_{TARGET_TIMEFRAME}_candle_data.csv')
 
         try:
             from rich.console import Console
             console = Console()
-            console.print(f"[cyan]🔶 BTC single-symbol mode[/cyan]\n")
-            console.print(f"[dim]   Data file: {os.path.basename(csv_file)}[/dim]\n")
+            console.print(f"[cyan]🔶 BTC multi-timeframe mode[/cyan]\n")
+            console.print(f"[dim]   Timeframes: {', '.join(TARGET_TIMEFRAMES)}[/dim]\n")
         except ImportError:
-            print(f"🔶 BTC single-symbol mode")
-            print(f"   Data file: {os.path.basename(csv_file)}")
+            print(f"🔶 BTC multi-timeframe mode")
+            print(f"   Timeframes: {', '.join(TARGET_TIMEFRAMES)}")
 
-        if not os.path.exists(csv_file):
-            print(f"❌ No data file found: {csv_file}")
-            print(f"   Run run_bt.py first to fetch data, or check TARGET_TIMEFRAME in this script.")
+        # ── Step 1: Fetch data for BTC across all timeframes (like run_bt.py) ────
+        show_initialization_screen('data_fetch', {
+            'Symbol': TARGET_SYMBOL,
+            'Timeframes': ', '.join(TARGET_TIMEFRAMES),
+            'Data Source': 'Multi-exchange (Hyperliquid primary)',
+            'Caching': 'CSV format with staleness detection',
+            'Force Refresh': 'YES' if force_refresh else 'Use cache'
+        })
+
+        # Build a BTC-only symbols dict so fetch_ohlcv_data_async only pulls BTC
+        btc_symbols = {
+            'hyperliquid': [TARGET_SYMBOL],
+            'unmatched_binance': [TARGET_SYMBOL],
+            'phemex': [TARGET_SYMBOL],
+        }
+
+        try:
+            from rich.console import Console
+            console = Console()
+            console.print("[cyan]Fetching BTC historical OHLCV data...[/cyan]")
+            with silent_operation():
+                await fetch_ohlcv_data_async(btc_symbols, timeframes=TARGET_TIMEFRAMES,
+                                             data_dir=data_dir, force_refresh=force_refresh)
+            console.print("[green]Data fetch complete[/green]\n")
+        except ImportError:
+            print("Fetching BTC historical OHLCV data...")
+            with silent_operation():
+                await fetch_ohlcv_data_async(btc_symbols, timeframes=TARGET_TIMEFRAMES,
+                                             data_dir=data_dir, force_refresh=force_refresh)
+            print("Data fetch complete\n")
+
+        # ── Step 2: Discover which BTC CSVs are available after fetch ────────────
+        available_csvs = {}
+        for tf in TARGET_TIMEFRAMES:
+            csv_file = os.path.join(data_dir, f'{TARGET_SYMBOL}_{tf}_candle_data.csv')
+            if os.path.exists(csv_file):
+                df = pd.read_csv(csv_file)
+                if len(df) >= 200:
+                    available_csvs[tf] = (csv_file, df)
+                else:
+                    print(f"Skipping {tf}: only {len(df)} candles")
+            else:
+                print(f"Skipping {tf}: no data file found")
+
+        if not available_csvs:
+            print("No BTC data files found for any timeframe. Run with --force-refresh.")
             return 1
 
-        df = pd.read_csv(csv_file)
-        print(f"Loaded {len(df)} candles for {TARGET_SYMBOL}")
+        print(f"Available timeframes: {list(available_csvs.keys())}")
 
-        if len(df) < 200:
-            print(f"Warning: only {len(df)} candles (minimum 200 required)")
-            return 1
-
-        # Step 2: pick strategies
+        # ── Step 3: Pick strategies ───────────────────────────────────────────────
         from src.strategy import strategies
 
         test_strategies = []
         available_strategies = list(strategies.keys())
-
-        # Select strategies to run
-        preferred_test_strategies = ['multi_confirmation_40x'] #, 'rsi_divergence', 'rsi_divergence_with_hold', 'macd_ema_atr', 'macd_ema_atr_with_hold'
+        preferred_test_strategies = ['multi_confirmation_40x']
         for strat in preferred_test_strategies:
             if strat in available_strategies:
                 test_strategies.append(strat)
-
-        # If no preferred strategies found, use first 4 available
         if not test_strategies:
             test_strategies = available_strategies[:4]
 
-        total_tasks = len(test_strategies)
-
-        show_initialization_screen('optimization_start', {
-            'Symbol': TARGET_SYMBOL,
-            'Timeframe': TARGET_TIMEFRAME,
-            'Candles': len(df),
-            'Strategies': ', '.join(test_strategies),
-            'Total Optimizations': total_tasks,
-            'Workers': max_workers,
-            'Optimizer': f'{optimizer.capitalize()} (Bayesian)',
-            'Trials per Strategy': n_trials
-        })
-
-        # Suppress pipeline logger to keep dashboard clean (no JSON logs scrolling)
-        pipeline_logger = logging.getLogger('pipeline_BT_source')
-        pipeline_logger.setLevel(logging.ERROR)
-        pipeline_logger.handlers = []
-        error_handler = logging.StreamHandler(sys.stderr)
-        error_handler.setLevel(logging.ERROR)
-        error_handler.setFormatter(logging.Formatter('\n[ERROR] %(message)s\n'))
-        pipeline_logger.addHandler(error_handler)
-
-        # Step 3: run optimize_strategy_task per strategy — same as pipeline's test_single_symbol
+        # ── Step 4: Build all (timeframe × strategy) tasks ───────────────────────
         output_dir = os.path.join(os.path.dirname(__file__), 'results')
         os.makedirs(output_dir, exist_ok=True)
 
-        successful = 0
-        failed = 0
+        optimization_tasks = []
+        skipped_count = 0
 
-        # Create and start the live dashboard
-        dashboard = create_dashboard(total_tasks)
-        dashboard.start()
-
-        try:
+        for tf, (csv_file, df) in available_csvs.items():
             for strategy_name in test_strategies:
                 strategy_class = strategies.get(strategy_name)
                 if strategy_class is None:
-                    dashboard.update_task(TARGET_SYMBOL, TARGET_TIMEFRAME, strategy_name, 'failed',
-                                          error_msg='Strategy class not found')
                     continue
 
-                result_file = os.path.join(output_dir, TARGET_SYMBOL, TARGET_TIMEFRAME,
+                result_file = os.path.join(output_dir, TARGET_SYMBOL, tf,
                                            f'results_{strategy_name}_strategy.json')
                 if os.path.exists(result_file) and not force_refresh:
                     try:
@@ -177,14 +184,14 @@ async def main():
                         with open(result_file, 'r') as f:
                             existing = json.load(f)
                         if existing.get('success', False):
-                            dashboard.update_task(TARGET_SYMBOL, TARGET_TIMEFRAME, strategy_name, 'skipped')
+                            skipped_count += 1
                             continue
                     except Exception:
                         pass
 
-                task = {
+                optimization_tasks.append({
                     'symbol':            TARGET_SYMBOL,
-                    'timeframe':         TARGET_TIMEFRAME,
+                    'timeframe':         tf,
                     'strategy_name':     strategy_name,
                     'strategy_class':    strategy_class,
                     'strategy_category': 'custom',
@@ -193,27 +200,74 @@ async def main():
                     'csv_file':          csv_file,
                     'optimizer':         optimizer,
                     'n_trials':          n_trials,
+                })
+
+        total_tasks = len(optimization_tasks) + skipped_count
+
+        show_initialization_screen('optimization_start', {
+            'Symbol': TARGET_SYMBOL,
+            'Timeframes': ', '.join(available_csvs.keys()),
+            'Strategies': ', '.join(test_strategies),
+            'Total Optimizations': total_tasks,
+            'Skipped (cached)': skipped_count,
+            'Workers': max_workers,
+            'Optimizer': f'{optimizer.capitalize()} (Bayesian)',
+            'Trials per Strategy': n_trials
+        })
+
+        # Suppress pipeline logger
+        pipeline_logger = logging.getLogger('pipeline_BT_source')
+        pipeline_logger.setLevel(logging.ERROR)
+        pipeline_logger.handlers = []
+        error_handler = logging.StreamHandler(sys.stderr)
+        error_handler.setLevel(logging.ERROR)
+        error_handler.setFormatter(logging.Formatter('\n[ERROR] %(message)s\n'))
+        pipeline_logger.addHandler(error_handler)
+
+        # ── Step 5: Run all tasks in parallel (ProcessPoolExecutor like pipeline) ─
+        dashboard = create_dashboard(total_tasks)
+        dashboard.start()
+
+        for _ in range(skipped_count):
+            dashboard.update_task(TARGET_SYMBOL, '--', 'various', 'skipped', category='cached')
+
+        successful = 0
+        failed = 0
+
+        try:
+            with ProcessPoolExecutor(max_workers=max_workers) as executor:
+                future_to_task = {
+                    executor.submit(optimize_strategy_task, task): task
+                    for task in optimization_tasks
                 }
-
-                result = optimize_strategy_task(task)
-
-                if result and result.get('success'):
-                    save_individual_result(result, output_dir)
-                    successful += 1
-                    dashboard.update_task(TARGET_SYMBOL, TARGET_TIMEFRAME, strategy_name, 'success',
-                                          passed_criteria=True)
-                else:
-                    failed += 1
-                    err = result.get('error', 'unknown') if result else 'no result'
-                    dashboard.update_task(TARGET_SYMBOL, TARGET_TIMEFRAME, strategy_name, 'failed',
-                                          error_msg=err)
+                for future in as_completed(future_to_task):
+                    task = future_to_task[future]
+                    tf = task['timeframe']
+                    strategy_name = task['strategy_name']
+                    try:
+                        result = future.result()
+                        if result and result.get('success'):
+                            save_individual_result(result, output_dir)
+                            successful += 1
+                            dashboard.update_task(TARGET_SYMBOL, tf, strategy_name, 'success',
+                                                  passed_criteria=True)
+                        else:
+                            failed += 1
+                            err = result.get('error', 'unknown') if result else 'no result'
+                            dashboard.update_task(TARGET_SYMBOL, tf, strategy_name, 'failed',
+                                                  error_msg=err)
+                    except Exception as exc:
+                        failed += 1
+                        dashboard.update_task(TARGET_SYMBOL, tf, strategy_name, 'failed',
+                                              error_msg=str(exc))
         finally:
             dashboard.stop()
 
         print(f"\n✅ Optimization completed")
-        print(f"📊 Total optimizations: {total_tasks}")
+        print(f"📊 Total optimizations: {total_tasks}  ({len(available_csvs)} timeframes × {len(test_strategies)} strategies)")
         print(f"✅ Successful: {successful}")
         print(f"❌ Failed: {failed}")
+        print(f"⏭️  Skipped (cached): {skipped_count}")
         print(f"📁 Results saved to: {output_dir}")
 
     except KeyboardInterrupt:
