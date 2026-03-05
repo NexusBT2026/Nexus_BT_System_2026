@@ -17,7 +17,7 @@ from src.pipeline.pipeline_BT_unified_async import (
     save_individual_result,
     NUMEXPR_MAX_THREADS
 )
-from src.backtest.dashboard_monitor import show_initialization_screen
+from src.backtest.dashboard_monitor import show_initialization_screen, create_dashboard
 import logging
 import sys
 import os
@@ -142,10 +142,8 @@ async def main():
         })
 
         # Suppress pipeline logger to keep dashboard clean (no JSON logs scrolling)
-        # But allow ERROR level to show critical issues below dashboard
         pipeline_logger = logging.getLogger('pipeline_BT_source')
-        pipeline_logger.setLevel(logging.ERROR)  # Show errors below dashboard
-        # Remove JSON handlers, add simple error handler
+        pipeline_logger.setLevel(logging.ERROR)
         pipeline_logger.handlers = []
         error_handler = logging.StreamHandler(sys.stderr)
         error_handler.setLevel(logging.ERROR)
@@ -159,58 +157,58 @@ async def main():
         successful = 0
         failed = 0
 
-        for strategy_name in test_strategies:
-            strategy_class = strategies.get(strategy_name)
-            if strategy_class is None:
-                print(f"⚠️  Strategy not found: {strategy_name}")
-                continue
+        # Create and start the live dashboard
+        dashboard = create_dashboard(total_tasks)
+        dashboard.start()
 
-            result_file = os.path.join(output_dir, TARGET_SYMBOL, TARGET_TIMEFRAME,
-                                       f'results_{strategy_name}_strategy.json')
-            if os.path.exists(result_file) and not force_refresh:
-                try:
-                    import json
-                    with open(result_file, 'r') as f:
-                        existing = json.load(f)
-                    if existing.get('success', False):
-                        print(f"SKIPPING (already completed): {TARGET_SYMBOL} {TARGET_TIMEFRAME} {strategy_name}")
-                        continue
-                except Exception:
-                    pass
+        try:
+            for strategy_name in test_strategies:
+                strategy_class = strategies.get(strategy_name)
+                if strategy_class is None:
+                    dashboard.update_task(TARGET_SYMBOL, TARGET_TIMEFRAME, strategy_name, 'failed',
+                                          error_msg='Strategy class not found')
+                    continue
 
-            task = {
-                'symbol':            TARGET_SYMBOL,
-                'timeframe':         TARGET_TIMEFRAME,
-                'strategy_name':     strategy_name,
-                'strategy_class':    strategy_class,
-                'strategy_category': 'custom',
-                'reopt_days':        7,
-                'data':              df.copy(),
-                'csv_file':          csv_file,
-                'optimizer':         optimizer,
-                'n_trials':          n_trials,
-            }
+                result_file = os.path.join(output_dir, TARGET_SYMBOL, TARGET_TIMEFRAME,
+                                           f'results_{strategy_name}_strategy.json')
+                if os.path.exists(result_file) and not force_refresh:
+                    try:
+                        import json
+                        with open(result_file, 'r') as f:
+                            existing = json.load(f)
+                        if existing.get('success', False):
+                            dashboard.update_task(TARGET_SYMBOL, TARGET_TIMEFRAME, strategy_name, 'skipped')
+                            continue
+                    except Exception:
+                        pass
 
-            print(f"\n{'='*60}")
-            print(f"Running: {strategy_name} | {TARGET_SYMBOL} {TARGET_TIMEFRAME} | {optimizer} {n_trials} trials")
-            print(f"{'='*60}")
+                task = {
+                    'symbol':            TARGET_SYMBOL,
+                    'timeframe':         TARGET_TIMEFRAME,
+                    'strategy_name':     strategy_name,
+                    'strategy_class':    strategy_class,
+                    'strategy_category': 'custom',
+                    'reopt_days':        7,
+                    'data':              df.copy(),
+                    'csv_file':          csv_file,
+                    'optimizer':         optimizer,
+                    'n_trials':          n_trials,
+                }
 
-            result = optimize_strategy_task(task)
+                result = optimize_strategy_task(task)
 
-            if result and result.get('success'):
-                save_individual_result(result, output_dir)
-                successful += 1
-                print(f"✅ Optimization successful!")
-                print(f"   Return:      {result.get('return_pct', 0):.2f}%")
-                print(f"   Win Rate:    {result.get('win_rate', 0):.1f}%")
-                print(f"   Trades:      {result.get('trades', 0)}")
-                print(f"   Sharpe:      {result.get('sharpe', 0):.3f}")
-                print(f"   Max DD:      {result.get('max_drawdown', 0):.2f}")
-                print(f"   Score:       {result.get('composite_score', 0):.3f}")
-                print(f"   Best params: {result.get('best_params', {})}")
-            else:
-                failed += 1
-                print(f"❌ Optimization failed: {result.get('error', 'unknown') if result else 'no result'}")
+                if result and result.get('success'):
+                    save_individual_result(result, output_dir)
+                    successful += 1
+                    dashboard.update_task(TARGET_SYMBOL, TARGET_TIMEFRAME, strategy_name, 'success',
+                                          passed_criteria=True)
+                else:
+                    failed += 1
+                    err = result.get('error', 'unknown') if result else 'no result'
+                    dashboard.update_task(TARGET_SYMBOL, TARGET_TIMEFRAME, strategy_name, 'failed',
+                                          error_msg=err)
+        finally:
+            dashboard.stop()
 
         print(f"\n✅ Optimization completed")
         print(f"📊 Total optimizations: {total_tasks}")
