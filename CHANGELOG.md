@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/SemVer
 
 ## [Unreleased]
 
+### Added (March 2026)
+- **Yahoo Finance (yfinance) Integration** — 11th data source, completely free, no API key required:
+  - `src/data/yfinance_ohlcv_source.py` — `YFinanceOHLCVDataSource` class fetching OHLCV via `yf.Ticker.history()`
+  - Symbol discovery via all 15 predefined `yf.screen()` screener queries → **2,064 unique US stock/ETF tickers**
+  - Smart intersection: 12 crypto/stock ticker overlaps (BTC, ETH, SOL, BNB, etc.) filtered out → **2,052 unique non-crypto symbols** delivered to the pipeline
+  - Supported timeframes: `1m`, `5m`, `15m`, `30m`, `1h`, `1d`, `1w`
+  - Enabled via `"use_yfinance": true` in `config.json` (defaults to `false`)
+  - Added `yfinance` to `requirements.txt` and `'yfinance'` bucket to `create_exchange_buckets()`
+  - Total platform coverage now **3,200+ unique symbols** (crypto + equities)
+
 ### Added (January 2026)
 - **Real-Time Optimization Dashboard** with Rich UI library:
   - Live progress bars with ETA and time elapsed
@@ -23,7 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/SemVer
   - Bitget perpetual swaps (USDT pairs)
   - Gate.io perpetual swaps (USDT pairs)
   - MEXC perpetual swaps (USDT pairs)
-  - Total coverage now 1,110+ unique trading symbols
+  - Total coverage now 1,110+ unique crypto trading symbols
 - **Enhanced Strategy Categorization**: 17 categories with exchange-specific preferences
 - **Professional Initialization Screens**: Phase-by-phase status with clean client-ready output
 - **CLI Argument Support**: `--workers`, `--trials`, `--optimizer`, `--scheduler`, `--force-refresh`
@@ -37,7 +47,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/SemVer
 - **Comprehensive Manual** (`MANUAL.md`): User guide for adding strategies and system usage
 - **Contributing Guidelines** (`CONTRIBUTING.md`): Development workflow and contribution standards
 - **MIT License**: Open source licensing
-- **Multi-Exchange Support**: Binance, Coinbase, Hyperliquid, KuCoin, Phemex, Bybit, OKX, Bitget, Gate.io, MEXC
+- **Multi-Exchange Support**: Binance, Coinbase, Hyperliquid, KuCoin, Phemex, Bybit, OKX, Bitget, Gate.io, MEXC, Yahoo Finance (yfinance)
 - **Async Data Fetching**: Concurrent data collection with smart caching
 - **GPU Acceleration**: CuPy and CUDA support for performance optimization
 - **Interactive Dashboards**: Plotly-based result visualization

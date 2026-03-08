@@ -313,7 +313,8 @@ def discover_symbols() -> dict[str, object]:
                                            get_gateio_base_symbols, get_gateio_symbols,
                                            get_mexc_base_symbols, get_mexc_symbols,
                                            get_okx_base_symbols, get_okx_symbols,
-                                           get_bybit_base_symbols, get_bybit_symbols)
+                                           get_bybit_base_symbols, get_bybit_symbols,
+                                           get_yfinance_base_symbols, get_yfinance_symbols)
     from src.data.symbol_intersection import (get_common_base_symbols, async_get_common_base_symbols,
                                               get_hyperliquid_unmatched_symbols, async_get_hyperliquid_unmatched_symbols,
                                               async_get_unmatched_coinbase_symbols, get_unmatched_coinbase_symbols,
@@ -322,7 +323,8 @@ def discover_symbols() -> dict[str, object]:
                                               get_unmatched_kucoin_symbols, async_get_unmatched_kucoin_symbols,
                                               get_phemex_base, get_binance_base, get_coinbase_base, get_kucoin_base,
                                               get_unmatched_bitget_symbols, get_unmatched_bybit_symbols,
-                                              get_unmatched_gateio_symbols, get_unmatched_mexc_symbols, get_unmatched_okx_symbols)
+                                              get_unmatched_gateio_symbols, get_unmatched_mexc_symbols, get_unmatched_okx_symbols,
+                                              get_unmatched_yfinance_symbols)
     
     # Load config to check exchange flags
     config_path = os.path.join(project_root, 'config.json')
@@ -350,6 +352,8 @@ def discover_symbols() -> dict[str, object]:
         enabled_exchanges.append('gateio')
     if config.get('use_mexc', False):
         enabled_exchanges.append('mexc')
+    if config.get('use_yfinance', False):
+        enabled_exchanges.append('yfinance')
     
     logger.info(f"Enabled exchanges for symbol discovery: {enabled_exchanges}")
 
@@ -371,6 +375,7 @@ def discover_symbols() -> dict[str, object]:
     gateio_unmatched = None
     mexc_unmatched = None
     okx_unmatched = None
+    yfinance_unmatched = None
 
     # Use base symbols cache if available
     if base_symbols_cache and "symbols" in base_symbols_cache:
@@ -399,6 +404,8 @@ def discover_symbols() -> dict[str, object]:
         logger.debug(f"[CACHE] Loaded unmatched Mexc symbols: {mexc_unmatched}")
         okx_unmatched = get_unmatched_okx_symbols()
         logger.debug(f"[CACHE] Loaded unmatched Okx symbols: {okx_unmatched}")
+        yfinance_unmatched = get_unmatched_yfinance_symbols()
+        logger.debug(f"[CACHE] Loaded unmatched YFinance symbols: {yfinance_unmatched}")
 
     # If any are still None, fetch live (using helper functions that return lists)
     if phemex_symbols is None:
@@ -439,6 +446,11 @@ def discover_symbols() -> dict[str, object]:
     if okx_unmatched is None:
         okx_unmatched = get_unmatched_okx_symbols()
         logger.debug(f"[LIVE] Fetched unmatched Okx symbols: {okx_unmatched}")
+    if yfinance_unmatched is None and 'yfinance' in enabled_exchanges:
+        yfinance_unmatched = get_unmatched_yfinance_symbols()
+        logger.debug(f"[LIVE] Fetched unmatched YFinance symbols: {yfinance_unmatched}")
+    elif yfinance_unmatched is None:
+        yfinance_unmatched = []
 
     return {
         'phemex': phemex_symbols,
@@ -453,7 +465,8 @@ def discover_symbols() -> dict[str, object]:
         'unmatched_bybit': bybit_unmatched,
         'unmatched_gateio': gateio_unmatched,
         'unmatched_mexc': mexc_unmatched,
-        'unmatched_okx': okx_unmatched
+        'unmatched_okx': okx_unmatched,
+        'unmatched_yfinance': yfinance_unmatched
     }
 
 async def discover_symbols_async():
@@ -475,7 +488,8 @@ async def discover_symbols_async():
                                            get_gateio_base_symbols, get_gateio_symbols,
                                            get_mexc_base_symbols, get_mexc_symbols,
                                            get_okx_base_symbols, get_okx_symbols,
-                                           get_bybit_base_symbols, get_bybit_symbols)
+                                           get_bybit_base_symbols, get_bybit_symbols,
+                                           get_yfinance_base_symbols, get_yfinance_symbols)
     from src.data.symbol_intersection import (get_common_base_symbols, async_get_common_base_symbols,
                                               get_hyperliquid_unmatched_symbols, async_get_hyperliquid_unmatched_symbols,
                                               async_get_unmatched_coinbase_symbols, get_unmatched_coinbase_symbols,
@@ -487,7 +501,8 @@ async def discover_symbols_async():
                                               get_unmatched_bybit_symbols, async_get_unmatched_bybit_symbols,
                                               get_unmatched_gateio_symbols, async_get_unmatched_gateio_symbols,
                                               get_unmatched_mexc_symbols, async_get_unmatched_mexc_symbols,
-                                              get_unmatched_okx_symbols, async_get_unmatched_okx_symbols)
+                                              get_unmatched_okx_symbols, async_get_unmatched_okx_symbols,
+                                              get_unmatched_yfinance_symbols, async_get_unmatched_yfinance_symbols)
     
     # Load config to check exchange flags
     config_path = os.path.join(project_root, 'config.json')
@@ -515,6 +530,8 @@ async def discover_symbols_async():
         enabled_exchanges.append('gateio')
     if config.get('use_mexc', False):
         enabled_exchanges.append('mexc')
+    if config.get('use_yfinance', False):
+        enabled_exchanges.append('yfinance')
     
     logger.info(f"Enabled exchanges for symbol discovery: {enabled_exchanges}")
 
@@ -536,6 +553,7 @@ async def discover_symbols_async():
     gateio_unmatched = None
     mexc_unmatched = None
     okx_unmatched = None
+    yfinance_unmatched = None
 
     # Use base symbols cache if available
     if base_symbols_cache and "symbols" in base_symbols_cache:
@@ -576,6 +594,9 @@ async def discover_symbols_async():
         if 'okx' in enabled_exchanges:
             okx_unmatched = get_unmatched_okx_symbols()
             logger.debug(f"[CACHE] Loaded unmatched Okx symbols: {okx_unmatched}")
+        if 'yfinance' in enabled_exchanges:
+            yfinance_unmatched = get_unmatched_yfinance_symbols()
+            logger.debug(f"[CACHE] Loaded unmatched YFinance symbols: {yfinance_unmatched}")
 
     # If any are still None, fetch live (using helper functions that return lists)
     if phemex_symbols is None and 'phemex' in enabled_exchanges:
@@ -643,6 +664,11 @@ async def discover_symbols_async():
         logger.debug(f"[LIVE] Fetched unmatched Okx symbols: {okx_unmatched}")
     elif okx_unmatched is None:
         okx_unmatched = []
+    if yfinance_unmatched is None and 'yfinance' in enabled_exchanges:
+        yfinance_unmatched = await async_get_unmatched_yfinance_symbols()
+        logger.debug(f"[LIVE] Fetched unmatched YFinance symbols: {yfinance_unmatched}")
+    elif yfinance_unmatched is None:
+        yfinance_unmatched = []
 
     return {
         'phemex': phemex_symbols,
@@ -657,7 +683,8 @@ async def discover_symbols_async():
         'unmatched_bybit': bybit_unmatched,
         'unmatched_gateio': gateio_unmatched,
         'unmatched_mexc': mexc_unmatched,
-        'unmatched_okx': okx_unmatched
+        'unmatched_okx': okx_unmatched,
+        'unmatched_yfinance': yfinance_unmatched
     }
 
 def is_data_fresh(file_path: str, timeframe: str) -> tuple[bool, datetime | None]:
@@ -759,10 +786,11 @@ async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join
     bitget_timeframes = ['1m', '3m', '5m', '15m', '30m', '1h', '4h', '6h', '12h', '1d', '3d', '1w', '1M']
     gateio_timeframes = ['1m', '3m', '5m', '15m', '30m', '1h', '2h', '4h', '6h', '8h', '12h', '1d', '3d', '1w']
     mexc_timeframes = ['1m', '5m', '15m', '30m', '1h', '4h', '8h', '1d', '1w', '1M']
+    yfinance_timeframes = ['1m', '5m', '15m', '30m', '1h', '1d', '1w']
 
     if timeframes is None:
         timeframes = list(set(coinbase_timeframes + phemex_timeframes + hyperliquid_timeframes + binance_timeframes + kucoin_timeframes + bybit_timeframes
-                              + okx_timeframes + bitget_timeframes + gateio_timeframes + mexc_timeframes))
+                              + okx_timeframes + bitget_timeframes + gateio_timeframes + mexc_timeframes + yfinance_timeframes))
 
     from src.data.phemex_ohlcv_source import PhemexOHLCVDataSource
     from src.data.hyperliquid_ohlcv_source import HyperliquidOHLCVDataSource
@@ -774,6 +802,7 @@ async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join
     from src.data.bitget_ohlcv_source import BitgetOHLCVDataSource
     from src.data.gateio_ohlcv_source import GateioOHLCVDataSource
     from src.data.mexc_ohlcv_source import MEXCOHLCVDataSource
+    from src.data.yfinance_ohlcv_source import YFinanceOHLCVDataSource
 
     # Load config to check exchange flags
     config_path = os.path.join(project_root, 'config.json')
@@ -801,6 +830,8 @@ async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join
         enabled_exchanges.append('gateio')
     if config.get('use_mexc', False):
         enabled_exchanges.append('mexc')
+    if config.get('use_yfinance', False):
+        enabled_exchanges.append('yfinance')
     
     logger.info(f"Enabled exchanges for symbol discovery: {enabled_exchanges}")
 
@@ -814,6 +845,7 @@ async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join
     bitget_ds = BitgetOHLCVDataSource()
     gateio_ds = GateioOHLCVDataSource()
     mexc_ds = MEXCOHLCVDataSource()
+    yfinance_ds = YFinanceOHLCVDataSource()
 
     os.makedirs(data_dir, exist_ok=True)
 
@@ -922,6 +954,10 @@ async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join
                 # For MEXC perpetual swaps, USDT pairs
                 base_symbol = symbol
                 fetch_symbol = f"{symbol}/USDT:USDT"  # MEXC uses BASE/USDT:USDT format
+            elif exchange_name == 'yfinance':
+                # yfinance symbols are already in final form (e.g., 'AAPL', 'MSFT')
+                base_symbol = symbol
+                fetch_symbol = symbol
             else:
                 continue
 
@@ -958,6 +994,7 @@ async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join
             'bitget': 3,       # Conservative - only 3 concurrent requests for Bitget
             'gateio': 3,       # Conservative - only 3 concurrent requests for Gate.io
             'mexc': 3,         # Conservative - only 3 concurrent requests for MEXC
+            'yfinance': 3,     # Conservative - only 3 concurrent requests for YFinance
         }.get(exchange_name, 3)
         
         logger.info(f"{exchange_name.upper()}: Processing {len(fetch_tasks)} tasks with {max_concurrent} max concurrent...")
@@ -989,6 +1026,8 @@ async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join
                         await asyncio.sleep(4.0)  # 4 second for Gate.io (most tolerant)
                     elif exchange_name == 'mexc':
                         await asyncio.sleep(4.0)  # 4 second for MEXC (most tolerant)
+                    elif exchange_name == 'yfinance':
+                        await asyncio.sleep(2.0)  # 2 seconds for YFinance (generous free tier)
                     else:
                         await asyncio.sleep(5.0)  # Default 5 second delay
                     
@@ -1072,6 +1111,8 @@ async def fetch_ohlcv_data_async(symbols, timeframes=None, data_dir=os.path.join
         exchange_tasks.append(('gateio', symbols['unmatched_gateio'], gateio_timeframes, gateio_ds))
     if 'mexc' in enabled_exchanges and symbols.get('unmatched_mexc'):
         exchange_tasks.append(('mexc', symbols['unmatched_mexc'], mexc_timeframes, mexc_ds))
+    if 'yfinance' in enabled_exchanges and symbols.get('unmatched_yfinance'):
+        exchange_tasks.append(('yfinance', symbols['unmatched_yfinance'], yfinance_timeframes, yfinance_ds))
 
     # Process all exchanges concurrently with asyncio
     if exchange_tasks:

@@ -245,6 +245,7 @@ def create_exchange_buckets() -> Dict[str, TokenBucket]:
         'bitget': TokenBucket(100, 20.0, "Bitget", False, 60),                # CCXT: 50ms = 20.00 req/sec (VERIFIED 2026-01-03)
         'gateio': TokenBucket(100, 20.0, "Gateio", False, 60),                # CCXT: 50ms = 20.00 req/sec (VERIFIED 2026-01-03)
         'mexc': TokenBucket(100, 20.0, "MEXC", False, 60),                    # CCXT: 50ms = 20.00 req/sec (VERIFIED 2026-01-03)
+        'yfinance': TokenBucket(20, 2.0, "YFinance", False, 60),              # Free tier: ~2000 req/hour = ~0.55 req/sec (conservative)
     }
 
 

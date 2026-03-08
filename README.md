@@ -13,7 +13,7 @@ A comprehensive, modular backtesting framework inspired by Freqtrade, featuring 
 - **Smart data freshness checking** to avoid unnecessary fetches
 - **GPU-accelerated computations** where available
 
-### Multi-Exchange Support (10 Exchanges Integrated)
+### Multi-Exchange Support (11 Exchanges Integrated)
 - **Hyperliquid** - Perpetual futures (~200 symbols) - PRIMARY DATA SOURCE
 - **Phemex** - Perpetual futures with unique contract formats
 - **Binance** - Spot trading (USDT pairs)
@@ -24,11 +24,12 @@ A comprehensive, modular backtesting framework inspired by Freqtrade, featuring 
 - **Bitget** - Perpetual swaps (USDT pairs)
 - **Gate.io** - Perpetual swaps (USDT pairs)
 - **MEXC** - Perpetual swaps (USDT pairs)
+- **Yahoo Finance (yfinance)** - US stocks & ETFs (2,052 unique symbols, **completely free — no API key required**)
 
-**📊 Total Coverage: 1,140+ unique trading symbols**
-- Hyperliquid provides ~90% of symbol coverage (comprehensive market)
-- Recently added: Bybit, OKX, Bitget, Gate.io, MEXC for expanded coverage
-- Smart symbol intersection to avoid duplicate data fetching
+**📊 Total Coverage: 3,200+ unique trading symbols**
+- Hyperliquid provides ~90% of crypto symbol coverage (comprehensive market)
+- Yahoo Finance adds 2,052 US stock/ETF symbols via free screener API
+- Smart symbol intersection filters out crypto/stock ticker overlaps (e.g. BTC, ETH, SOL)
 - Automatic staleness detection and refresh
 
 ### Strategy Optimization
@@ -123,6 +124,7 @@ Edit `config.json` with your exchange API credentials:
   "use_bitget": true,
   "use_gateio": true,
   "use_mexc": true,
+  "use_yfinance": false,
   "numexpr_max_threads": null
 }
 ```
@@ -383,7 +385,8 @@ Enable/disable exchanges in `config.json`:
   "use_okx": true,
   "use_bitget": true,
   "use_gateio": true,
-  "use_mexc": true
+  "use_mexc": true,
+  "use_yfinance": false
 }
 ```
 

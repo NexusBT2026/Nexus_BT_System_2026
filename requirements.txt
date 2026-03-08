@@ -2,6 +2,7 @@
 hyperliquid-python-sdk
 hyperliquid
 ccxt
+yfinance  # Free stock/ETF OHLCV and symbol discovery — no API key needed
 pandas
 pandas_ta
 setuptools==80.9.0

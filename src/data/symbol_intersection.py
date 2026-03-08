@@ -17,7 +17,8 @@ from src.data.symbol_discovery import (load_cache_base_symbols, load_cache_per_e
                                        get_hyperliquid_symbols,
                                        get_coinbase_spot_symbols, get_coinbase_base_symbols,
                                        get_binance_spot_symbols, get_binance_base_symbols,
-                                       get_kucoin_symbols, get_kucoin_base_symbols )
+                                       get_kucoin_symbols, get_kucoin_base_symbols,
+                                       get_yfinance_symbols, get_yfinance_base_symbols )
 
 from src.exchange.logging_utils import setup_logger
 #from src.exchange.retry import retry_on_exception
@@ -709,6 +710,14 @@ def get_mexc_base() -> list[str]:
     from src.data.symbol_discovery import get_mexc_base_symbols
     return get_mexc_base_symbols()
 
+def get_yfinance_base() -> list[str]:
+    """
+    Helper function to get yfinance symbols as a list.
+    yfinance symbols are already base symbols (e.g., 'AAPL', 'MSFT').
+    """
+    from src.data.symbol_discovery import get_yfinance_base_symbols
+    return get_yfinance_base_symbols()
+
 def get_unmatched_bybit_symbols() -> list[str]:
     """
     Return symbols that are on Bybit but NOT on any of the original 5 exchanges
@@ -825,6 +834,30 @@ async def async_get_unmatched_mexc_symbols() -> list[str]:
     """Async version of get_unmatched_mexc_symbols"""
     return await asyncio.to_thread(get_unmatched_mexc_symbols)
 
+def get_unmatched_yfinance_symbols() -> list[str]:
+    """
+    Return yfinance stock/ETF symbols not found on any of the crypto exchanges.
+    Since stocks and crypto rarely overlap, this effectively returns all yfinance symbols.
+    """
+    yfinance_symbols: set[str] = set(get_yfinance_base())
+    phemex_bases: set[str] = set(get_phemex_base())
+    coinbase_bases: set[str] = set(get_coinbase_base())
+    hyperliquid_bases_raw = get_hyperliquid_symbols()
+    if hasattr(hyperliquid_bases_raw, 'symbol'):
+        hyperliquid_bases: set[str] = set(hyperliquid_bases_raw['symbol'].tolist())
+    else:
+        hyperliquid_bases = set(str(x) for x in hyperliquid_bases_raw)
+    binance_bases: set[str] = set(get_binance_base())
+    kucoin_bases: set[str] = set(get_kucoin_base())
+
+    unmatched = sorted(yfinance_symbols - phemex_bases - coinbase_bases - hyperliquid_bases - binance_bases - kucoin_bases)
+    logger.info(f'[YFINANCE] Unique symbols not on crypto exchanges: {len(unmatched)}')
+    return unmatched
+
+async def async_get_unmatched_yfinance_symbols() -> list[str]:
+    """Async version of get_unmatched_yfinance_symbols"""
+    return await asyncio.to_thread(get_unmatched_yfinance_symbols)
+
 # Add more filtering/normalization utilities as needed
 
 # Example usage:
@@ -878,6 +911,11 @@ if __name__ == "__main__":
     gateio_unmatched = get_unmatched_gateio_symbols()
     print(f"   Found {len(gateio_unmatched)} Gate.io-only symbols")
     print(f"   First 20: {gateio_unmatched[:20]}\n")
+
+    print("11. YFinance unmatched (stock/ETF symbols not on crypto exchanges):")
+    yfinance_unmatched = get_unmatched_yfinance_symbols()
+    print(f"   Found {len(yfinance_unmatched)} YFinance-only symbols")
+    print(f"   First 20: {yfinance_unmatched[:20]}\n")
     
     print("11. MEXC unmatched (not on original 5 exchanges):")
     mexc_unmatched = get_unmatched_mexc_symbols()

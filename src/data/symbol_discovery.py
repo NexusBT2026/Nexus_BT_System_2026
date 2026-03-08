@@ -63,6 +63,8 @@ if config.get('use_gateio', False):
     enabled_exchanges.append('gateio')
 if config.get('use_mexc', False):
     enabled_exchanges.append('mexc')
+if config.get('use_yfinance', False):
+    enabled_exchanges.append('yfinance')
 
 logger.info(f"Enabled exchanges for symbol discovery: {enabled_exchanges}")
 
@@ -95,6 +97,8 @@ GATEIO_MARKETS_LOADS_SAVED = os.path.join(BASE_DATA_PATH, 'gateio', 'gateio_mark
 
 MEXC_MARKETS_LOADS = os.path.join(BASE_DATA_PATH, 'mexc', 'mexc_markets.json')
 MEXC_MARKETS_LOADS_SAVED = os.path.join(BASE_DATA_PATH, 'mexc', 'mexc_markets_loads_data_bot.json')
+
+YFINANCE_SYMBOLS_SAVED = os.path.join(BASE_DATA_PATH, 'yfinance', 'yfinance_symbols_data_bot.json')
 
 CACHE_FILE_PER_EXCHANGE_FORMAT = os.path.join(BASE_DATA_PATH, 'symbols_discovery', 'symbols_per_exchange_format_cache.json')
 CACHE_FILE_BASE_SYMBOLS = os.path.join(BASE_DATA_PATH, 'symbols_discovery', 'base_symbols_cache.json')
@@ -185,6 +189,7 @@ def get_all_symbols_with_cache_per_exchange_format() -> Any | dict[str, dict[Has
         "bitget": get_bitget_symbols(),
         "gateio": get_gateio_symbols(),
         "mexc": get_mexc_symbols(),
+        "yfinance": get_yfinance_symbols().to_dict(orient="list"),
     }
     save_cache_per_exchange_format(symbols)
     logger.info("Fetched and cached new symbols.")
@@ -213,6 +218,7 @@ def get_all_symbols_with_cache_base_symbols() -> Any | dict[str, dict[Hashable, 
         "bitget_base": get_bitget_base_symbols(),
         "gateio_base": get_gateio_base_symbols(),
         "mexc_base": get_mexc_base_symbols(),
+        "yfinance_base": get_yfinance_base_symbols(),
     }
     save_cache_base_symbols(symbols)
     logger.info("Fetched and cached new symbols.")
@@ -248,6 +254,9 @@ gateio_symbol_discovery_bucket = TokenBucket(100, 20.0, "Gateio_Order", enable_c
 
 # MEXC: CCXT rateLimit 50ms = 20.00 req/sec (VERIFIED 2026-01-03)
 mexc_symbol_discovery_bucket = TokenBucket(100, 20.0, "MEXC_Order", enable_caching=True, cache_ttl=120)  # CCXT verified
+
+# YFinance: generous free tier — ~2000 req/hour, no auth required
+yfinance_symbol_discovery_bucket = TokenBucket(20, 2.0, "YFinance_Order", enable_caching=True, cache_ttl=120)
 
 # ============================================================================
 # PHEMEX SYMBOLS (All Markets)
@@ -1350,6 +1359,66 @@ def get_mexc_base_symbols():
     return base_list
 
 
+def get_yfinance_symbols() -> pd.DataFrame:
+    """
+    Fetch all available stock/ETF symbols from Yahoo Finance screener.
+    Returns DataFrame with ['symbol'] column — no API key required.
+    Uses all 15 predefined yfinance screener queries (~2000+ unique tickers).
+    """
+    if 'yfinance' not in enabled_exchanges:
+        logger.info("[YFINANCE] Exchange disabled in config, skipping")
+        return pd.DataFrame(columns=['symbol'])
+
+    wait = yfinance_symbol_discovery_bucket.wait_time()
+    if wait > 0:
+        time.sleep(wait)
+    if not yfinance_symbol_discovery_bucket.consume():
+        logger.warning("[YFINANCE] Rate limit prevented API call, returning empty DataFrame")
+        return pd.DataFrame(columns=['symbol'])
+
+    import yfinance as yf
+    from yfinance.screener import PREDEFINED_SCREENER_QUERIES
+
+    start = time.time()
+    all_symbols: set = set()
+
+    for screen_name in PREDEFINED_SCREENER_QUERIES.keys():
+        try:
+            result = yf.screen(screen_name, count=250)
+            for q in result.get('quotes', []):
+                s = q.get('symbol')
+                if s and isinstance(s, str):
+                    all_symbols.add(s)
+        except Exception as e:
+            logger.warning(f"[YFINANCE] Screen '{screen_name}' failed: {e}")
+
+    symbols_list = sorted(all_symbols)
+
+    os.makedirs(os.path.dirname(YFINANCE_SYMBOLS_SAVED), exist_ok=True)
+    with open(YFINANCE_SYMBOLS_SAVED, 'w') as f:
+        json.dump({"symbols": symbols_list}, f, indent=2)
+
+    record_api_call('yfinance', '/screener', method='GET', success=True,
+                    response_time=time.time() - start, tokens_consumed=1)
+    logger.info(f"[YFINANCE] Found {len(symbols_list)} unique symbols across all screens")
+    return pd.DataFrame({'symbol': symbols_list})
+
+
+def get_yfinance_base_symbols() -> list:
+    """
+    Return yfinance symbols as a list.
+    yfinance ticker symbols are already base symbols (e.g., 'AAPL', 'MSFT', 'SPY').
+    """
+    if 'yfinance' not in enabled_exchanges:
+        logger.info("[YFINANCE] Exchange disabled in config, skipping")
+        return []
+
+    symbols_df = get_yfinance_symbols()
+    if hasattr(symbols_df, 'symbol'):
+        return symbols_df['symbol'].tolist()
+    return list(symbols_df)
+
+
 # No intersection logic here. Use symbol_intersection.py for that.
 # Example usage:
 if __name__ == "__main__":
@@ -1399,7 +1468,13 @@ if __name__ == "__main__":
     mexc_base = get_mexc_base_symbols()
     print(f"  SWAP symbols: {len(mexc_symbols)} | First 10: {mexc_symbols[:10]}")
     print(f"  Base symbols: {len(mexc_base)} | First 20: {mexc_base[:20]}")
-    
+
+    print("\n[YFINANCE]")
+    yfinance_symbols = get_yfinance_symbols()
+    yfinance_base = get_yfinance_base_symbols()
+    print(f"  Symbols: {len(yfinance_symbols)} | First 20: {yfinance_symbols['symbol'].tolist()[:20] if not yfinance_symbols.empty else []}")
+    print(f"  Base symbols: {len(yfinance_base)} | First 20: {yfinance_base[:20]}")
+
     print("\n" + "="*70)
 
 # Example usage:
