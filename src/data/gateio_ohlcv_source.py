@@ -41,7 +41,7 @@ class GateioOHLCVDataSource:
                 'defaultType': market_type,  # 'swap' for perpetuals, 'spot' for spot
             },
         }
-        self.exchange = ccxt.gateio(config)  # type: ignore
+        self.exchange = ccxt.gate(config)
         logger.info(f"Initialized GateioOHLCVDataSource for {market_type}")
     
     def fetch_historical_data(

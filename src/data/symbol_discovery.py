@@ -1236,7 +1236,7 @@ def get_gateio_symbols(retries: int = 3):
     
     for attempt in range(retries + 1):
         try:
-            exchange = ccxt.gateio({'enableRateLimit': True, 'options': {'defaultType': 'swap'}}) # type: ignore
+            exchange = ccxt.gate({'enableRateLimit': True, 'options': {'defaultType': 'swap'}})
             markets = exchange.load_markets()
             
             # Save full market data
