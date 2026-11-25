@@ -19,7 +19,7 @@ logger = setup_logger('coinbase_ohlcv_source', json_logs=True)
 
 class CoinbaseOHLCVDataSource:
     def __init__(self):
-        self.exchange = ccxt.coinbaseadvanced()
+        self.exchange = ccxt.coinbase()
         # Coinbase: CCXT rateLimit 334ms = ~3 req/sec (OFFICIAL)
         self.coinbase_bucket = TokenBucket(30, 3.0, "Coinbase_OHLCV", enable_caching=False, cache_ttl=60)  # OFFICIAL specs
 

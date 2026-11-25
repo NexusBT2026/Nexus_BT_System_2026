@@ -635,7 +635,7 @@ def get_coinbase_spot_symbols(retries: int = 3) -> pd.DataFrame:
     success = False
     for attempt in range(retries + 1):
         try:
-            exchange = ccxt.coinbaseadvanced()
+            exchange = ccxt.coinbase()
             # API call symbol_discovery_Coinbase_markets consume 1 if it worked!!!
             # If rate limited! Try again!!! And again consume 1, 
             # also if fail consume 1!!!
